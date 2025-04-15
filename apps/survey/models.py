@@ -15,6 +15,7 @@ class SurveyResponse(models.Model):
     age = models.PositiveIntegerField("Возраст")
     submitted_at = models.DateTimeField("Дата заполнения", auto_now_add=True)
     is_submitted = models.BooleanField("Отправлено", default=False)
+    pdf_file = models.FileField("Файл PDF анкеты", upload_to="surveys/", blank=True, null=True)
     signature = models.TextField("Подпись")
 
     # Ответы на вопросы

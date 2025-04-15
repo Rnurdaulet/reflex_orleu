@@ -2,6 +2,8 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
+
+from utils.pdf_utils import generate_survey_pdf
 from .models import Person, SurveyResponse
 import base64, json, requests
 
@@ -98,6 +100,7 @@ def finalize_signed_survey(request):
 
         survey.signature = signed_data
         survey.is_submitted = True
+        generate_survey_pdf(survey)
         survey.save()
 
         return JsonResponse({"success": True, "message": "Успешно отправлено"})

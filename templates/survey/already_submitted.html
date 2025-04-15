@@ -14,3 +14,6 @@
     <li>{{ survey.answer_4 }}</li>
     <li>{{ survey.answer_5 }}</li>
 </ol>
+{% if survey.pdf_file %}
+    <a href="{{ survey.pdf_file.url }}" target="_blank">Скачать PDF анкеты</a>
+{% endif %}
