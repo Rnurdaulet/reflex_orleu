@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}Все анкеты{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Список анкет</h2>
+
+<!-- Search & Filter -->
+<div data-filter-list='{"searchClass": "table-search", "listClass": "table-list", "sortClass": "table-sort", "valueNames": ["order", "full-name", "iin", "external-id"]}'>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="position-relative" style="max-width: 20rem;">
+      <i class="fi-search position-absolute top-50 start-0 translate-middle-y ms-3"></i>
+      <input type="search" class="table-search form-control form-icon-start" placeholder="Поиск...">
+    </div>
+    <a href="{% url 'survey_download_all' %}" class="btn btn-sm btn-primary">
+      📦 Скачать всё PDF архивом
+    </a>
+  </div>
+
+  <!-- Table -->
+  <div class="table-responsive overflow-auto" style="max-height: 500px;">
+    <table class="table align-middle table-bordered">
+      <thead class="position-sticky top-0 bg-light">
+        <tr>
+          <th>
+            <button type="button" class="btn table-sort p-0 fw-semibold text-dark" data-sort="order">#</button>
+          </th>
+          <th>
+            <button type="button" class="btn table-sort p-0 fw-semibold text-dark" data-sort="full-name">ФИО</button>
+          </th>
+          <th>
+            <button type="button" class="btn table-sort p-0 fw-semibold text-dark" data-sort="iin">ИИН</button>
+          </th>
+          <th>
+            <button type="button" class="btn table-sort p-0 fw-semibold text-dark" data-sort="external-id">Внешний ID</button>
+          </th>
+          <th>PDF</th>
+        </tr>
+      </thead>
+      <tbody class="table-list">
+        {% for survey in surveys %}
+        <tr>
+          <th class="order" scope="row">{{ forloop.counter }}</th>
+          <td class="full-name">{{ survey.full_name }}</td>
+          <td class="iin">{{ survey.person.iin }}</td>
+          <td class="external-id">{{ survey.external_id }}</td>
+          <td>
+            {% if survey.pdf_file %}
+              <a href="{{ survey.pdf_file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">Скачать</a>
+            {% else %}
+              <span class="text-muted">нет</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

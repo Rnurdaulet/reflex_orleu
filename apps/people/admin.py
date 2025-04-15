@@ -4,8 +4,6 @@ from .models import Person
 
 @admin.register(Person)
 class PersonAdmin(ModelAdmin):
-    list_display = ("full_name", "iin")
+    list_display = ("full_name", "iin","external_id","user")
     search_fields = ("full_name", "iin")
-    list_per_page = 25
-    fields = ("iin", "full_name", "signature")
 

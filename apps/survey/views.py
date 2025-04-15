@@ -7,6 +7,13 @@ from utils.pdf_utils import generate_survey_pdf
 from .models import Person, SurveyResponse
 import base64, json, requests
 
+
+from django.shortcuts import render
+from django.http import FileResponse, HttpResponse
+from .models import SurveyResponse
+import os, zipfile
+from io import BytesIO
+
 def build_preview_text(survey):
     return json.dumps({
         "external_id": survey.external_id,
@@ -107,3 +114,25 @@ def finalize_signed_survey(request):
 
     except Exception as e:
         return JsonResponse({"success": False, "message": str(e)}, status=500)
+
+
+@login_required
+def survey_list_view(request):
+    surveys = SurveyResponse.objects.filter(is_submitted=True)
+    return render(request, "survey/list.html", {"surveys": surveys})
+
+@login_required
+def download_all_surveys_pdf(request):
+    buffer = BytesIO()
+    zip_file = zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED)
+
+    surveys = SurveyResponse.objects.filter(is_submitted=True, pdf_file__isnull=False)
+
+    for survey in surveys:
+        if survey.pdf_file and os.path.exists(survey.pdf_file.path):
+            zip_file.write(survey.pdf_file.path, arcname=os.path.basename(survey.pdf_file.name))
+
+    zip_file.close()
+    buffer.seek(0)
+
+    return FileResponse(buffer, as_attachment=True, filename="all_surveys.zip")

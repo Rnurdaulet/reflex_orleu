@@ -1,114 +1,169 @@
+{% extends "base.html" %}
 {% load static %}
-<h2>Анкета</h2>
-<form method="post" action="{% url 'survey_submit' %}" id="survey-form">
-    {% csrf_token %}
-    <input type="text" name="external_id" placeholder="Внешний ID" required><br>
-<input type="text" name="full_name" placeholder="ФИО (только латиница)" oninput="filterLatinField(this)" required><br>
+{% block title %}Анкета{% endblock %}
 
-    <select name="gender" required>
-        <option value="">Выберите пол</option>
-        <option value="male">Мужской</option>
-        <option value="female">Женский</option>
-    </select><br>
-    <input type="number" name="age" placeholder="Возраст" required><br>
+{% block content %}
+    <h2 class="mb-4">Анкета</h2>
+    <div class="row">
+        <!-- Левая колонка: форма -->
+        <div class="col-lg-8">
+            <form method="post" action="{% url 'survey_submit' %}" id="survey-form" class="needs-validation" novalidate>
+                {% csrf_token %}
+                <div class="row">
 
-    <hr>
 
-    {% for i in "12345" %}
-        <label>Ответ на вопрос {{ i }}:</label><br>
-        <textarea id="answer_{{ i }}" name="answer_{{ i }}" oninput="filterLatinAndCount(this, {{ i }})"
-                  required></textarea>
-        <div id="counter_{{ i }}">Слов: 0</div>
-        <div id="latin_warn_{{ i }}" class="latin-warning" style="color: red; font-size: 0.9em; display: none;">
-            Допустимы только латинские символы.
+                    <!-- ФИО -->
+                    <div class="col-12 col-md-12">
+                        <label for="full_name" class="form-label">ФИО (латиница)</label>
+                        <input type="text" name="full_name" id="full_name" class="form-control"
+                               oninput="filterLatinField(this)" required>
+                    </div>
+                    <!-- Внешний ID -->
+                    <div class="col-12 col-md-4">
+                        <label for="external_id" class="form-label">Внешний ID</label>
+                        <input type="text" name="external_id" id="external_id" class="form-control"
+                                required>
+                    </div>
+
+                    <!-- Пол -->
+                    <div class="col-6 col-md-4">
+                        <label for="gender" class="form-label">Пол</label>
+                        <select name="gender" id="gender" class="form-select" required>
+                            <option value="">—</option>
+                            <option value="male">Мужской</option>
+                            <option value="female">Женский</option>
+                        </select>
+                    </div>
+
+                    <!-- Возраст -->
+                    <div class="col-6 col-md-4">
+                        <label for="age" class="form-label">Возраст</label>
+                        <input type="number" name="age" id="age" class="form-control" required>
+                    </div>
+                </div>
+
+
+                <hr class="my-4">
+
+                {% for i in "12345" %}
+                    <div class="mb-3">
+                        <label for="answer_{{ i }}" class="form-label">Ответ на вопрос {{ i }}</label>
+                        <textarea id="answer_{{ i }}" name="answer_{{ i }}" class="form-control" rows="3"
+                                  oninput="filterLatinAndCount(this, {{ i }})" required></textarea>
+                        <div id="counter_form_{{ i }}" class="form-text">Слов: 0</div>
+
+                        <div id="latin_warn_{{ i }}" class="form-text text-danger latin-warning" style="display: none;">
+                            Допустимы только латинские символы.
+                        </div>
+                    </div>
+                {% endfor %}
+            </form>
         </div>
-        <br>
-    {% endfor %}
+
+        <!-- Правая колонка: статистика -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">📊 Статистика</h5>
+                    <ul class="list-group list-group-flush mb-3">
+                        {% for i in "12345" %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Вопрос {{ i }}
+                                <span id="counter_card_{{ i }}" class="badge bg-secondary">0 слов</span>
+
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <hr>
+                    <p id="total_counter" class="fw-bold text-danger">Общий счёт: 0 / максимум 1500 слов</p>
+                    <div class="progress mb-3">
+                        <div class="progress-bar bg-success" id="progress-bar" role="progressbar" style="width: 0%">
+                            0%
+                        </div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" form="survey-form" id="submit-button" class="btn btn-primary">Сохранить и
+                            просмотреть
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
 
-    <hr>
-    <div id="total_counter" style="font-weight: bold;">Общий счёт: 0 / 1500 слов</div>
-    <button type="submit" id="submit-button">Сохранить и просмотреть</button>
+    <!-- Countable -->
+    <script src="{% static 'js/Countable.js' %}"></script>
 
-</form>
-
-<!-- Подключаем Countable.js -->
-<script src="{% static 'js/Countable.js' %}"></script>
-<style>
-    .latin-warning {
-        margin-top: -5px;
-        margin-bottom: 10px;
-        display: none;
-    }
-</style>
-
-<script>
-    const fields = [1, 2, 3, 4, 5];
-    let totalWords = 0;
-    let allFieldsValid = true;
-
-    function countWords(text) {
-        return text.trim().split(/\s+/).filter(Boolean).length;
-    }
-
-    function filterLatinField(el) {
-        const isLatin = /^[\x00-\x7F]*$/.test(el.value);
-        if (!isLatin) {
-            el.style.borderColor = "red";
-        } else {
-            el.style.borderColor = "";
+    <style>
+        .latin-warning {
+            font-size: 0.875em;
         }
-    }
+    </style>
 
+    <script>
+        const fields = [1, 2, 3, 4, 5];
+        let totalWords = 0;
+        let allFieldsValid = true;
 
-    function filterLatinAndCount(el, index) {
-        const value = el.value;
-        const isLatin = /^[\x00-\x7F]*$/.test(value);
-
-        // Обновить предупреждение
-        const warn = document.getElementById(`latin_warn_${index}`);
-        if (!isLatin) {
-            warn.style.display = "block";
-            el.style.borderColor = "red";
-        } else {
-            warn.style.display = "none";
-            el.style.borderColor = "";
+        function countWords(text) {
+            return text.trim().split(/\s+/).filter(Boolean).length;
         }
 
-        // Обновить счётчик слов
-        const wordCount = countWords(value);
-        document.getElementById(`counter_${index}`).innerText = `Слов: ${wordCount}`;
+        function filterLatinField(el) {
+            const isLatin = /^[\x00-\x7F]*$/.test(el.value);
+            el.classList.toggle("is-invalid", !isLatin);
+        }
 
-        // Обновить общий счёт
-        validateTotal();
-    }
-
-    function validateTotal() {
-        totalWords = 0;
-        allFieldsValid = true;
-
-        fields.forEach(i => {
-            const el = document.getElementById(`answer_${i}`);
+        function filterLatinAndCount(el, index) {
             const value = el.value;
             const isLatin = /^[\x00-\x7F]*$/.test(value);
-            const words = countWords(value);
-            totalWords += words;
 
-            if (!isLatin) {
-                allFieldsValid = false;
-            }
+            // Предупреждение
+            const warn = document.getElementById(`latin_warn_${index}`);
+            warn.style.display = isLatin ? "none" : "block";
+            el.classList.toggle("is-invalid", !isLatin);
+
+            // Слов по одному вопросу
+            const wordCount = countWords(value);
+
+            // Обновим оба счётчика:
+            document.getElementById(`counter_form_${index}`).innerText = `Слов: ${wordCount}`;
+            document.getElementById(`counter_card_${index}`).innerText = `${wordCount} слов`;
+
+            validateTotal();
+        }
+
+
+        function validateTotal() {
+            totalWords = 0;
+            allFieldsValid = true;
+
+            fields.forEach(i => {
+                const el = document.getElementById(`answer_${i}`);
+                const isLatin = /^[\x00-\x7F]*$/.test(el.value);
+                const words = countWords(el.value);
+                totalWords += words;
+                if (!isLatin) allFieldsValid = false;
+            });
+
+            const totalEl = document.getElementById("total_counter");
+            const isValidTotal = totalWords <= 1500 && allFieldsValid;
+            totalEl.innerText = `Общий счёт: ${totalWords} / максимум 1500 слов`;
+            totalEl.classList.toggle("text-danger", !isValidTotal);
+            totalEl.classList.toggle("text-success", isValidTotal);
+            document.getElementById("submit-button").disabled = !isValidTotal;
+
+            // 🟢 Прогресс-бар
+            const progress = Math.min(100, Math.round((totalWords / 1500) * 100));
+            const progressBar = document.getElementById("progress-bar");
+            progressBar.style.width = `${progress}%`;
+            progressBar.textContent = `${progress}%`;
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            validateTotal();
         });
-
-        const totalEl = document.getElementById("total_counter");
-        const isValidTotal = totalWords <= 1500 && allFieldsValid;
-        totalEl.innerText = `Общий счёт: ${totalWords} / максимум 1500 слов`;
-        totalEl.style.color = isValidTotal ? "green" : "red";
-        document.getElementById("submit-button").disabled = !isValidTotal;
-
-
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-        validateTotal();
-    });
-</script>
+    </script>
+{% endblock %}
