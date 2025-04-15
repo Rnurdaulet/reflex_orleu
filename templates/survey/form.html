@@ -1,85 +1,114 @@
 {% load static %}
 <h2>Анкета</h2>
-<form id="survey-form">
+<form method="post" action="{% url 'survey_submit' %}" id="survey-form">
     {% csrf_token %}
     <input type="text" name="external_id" placeholder="Внешний ID" required><br>
-    <input type="text" name="full_name" placeholder="ФИО" required><br>
+<input type="text" name="full_name" placeholder="ФИО (только латиница)" oninput="filterLatinField(this)" required><br>
+
     <select name="gender" required>
+        <option value="">Выберите пол</option>
         <option value="male">Мужской</option>
         <option value="female">Женский</option>
     </select><br>
     <input type="number" name="age" placeholder="Возраст" required><br>
 
-    <textarea oninput="this.value = this.value.replace(/[^\x00-\x7F]/g, '')" name="answer_1" placeholder="Ответ на вопрос 1" required></textarea><br>
-    <textarea oninput="this.value = this.value.replace(/[^\x00-\x7F]/g, '')" name="answer_2" placeholder="Ответ на вопрос 2" required></textarea><br>
-    <textarea oninput="this.value = this.value.replace(/[^\x00-\x7F]/g, '')" name="answer_3" placeholder="Ответ на вопрос 3" required></textarea><br>
-    <textarea oninput="this.value = this.value.replace(/[^\x00-\x7F]/g, '')" name="answer_4" placeholder="Ответ на вопрос 4" required></textarea><br>
-    <textarea oninput="this.value = this.value.replace(/[^\x00-\x7F]/g, '')" name="answer_5" placeholder="Ответ на вопрос 5" required></textarea><br>
+    <hr>
 
-    <button type="button" onclick="showPreview()">Предпросмотр</button>
+    {% for i in "12345" %}
+        <label>Ответ на вопрос {{ i }}:</label><br>
+        <textarea id="answer_{{ i }}" name="answer_{{ i }}" oninput="filterLatinAndCount(this, {{ i }})"
+                  required></textarea>
+        <div id="counter_{{ i }}">Слов: 0</div>
+        <div id="latin_warn_{{ i }}" class="latin-warning" style="color: red; font-size: 0.9em; display: none;">
+            Допустимы только латинские символы.
+        </div>
+        <br>
+    {% endfor %}
 
-    <div id="preview" style="border:1px solid gray; padding:10px; margin:10px 0; display:none;"></div>
-    <button type="button" onclick="signAndSubmit()">Подписать и отправить</button>
+
+    <hr>
+    <div id="total_counter" style="font-weight: bold;">Общий счёт: 0 / 1500 слов</div>
+    <button type="submit" id="submit-button">Сохранить и просмотреть</button>
+
 </form>
 
-<script src="{% static 'js/ncalayer-client.js' %}"></script>
+<!-- Подключаем Countable.js -->
+<script src="{% static 'js/Countable.js' %}"></script>
+<style>
+    .latin-warning {
+        margin-top: -5px;
+        margin-bottom: 10px;
+        display: none;
+    }
+</style>
+
 <script>
-    let previewText = "";
+    const fields = [1, 2, 3, 4, 5];
+    let totalWords = 0;
+    let allFieldsValid = true;
 
-    function showPreview() {
-        const form = document.getElementById("survey-form");
-        const formData = new FormData(form);
-        previewText = "";
-
-        for (let [key, value] of formData.entries()) {
-            if (key !== 'csrfmiddlewaretoken') {
-                previewText += `${key}: ${value}\n`;
-            }
-        }
-
-        document.getElementById("preview").innerText = previewText;
-        document.getElementById("preview").style.display = "block";
+    function countWords(text) {
+        return text.trim().split(/\s+/).filter(Boolean).length;
     }
 
-    function btoaUtf8(str) {
-        return btoa(unescape(encodeURIComponent(str)));
-    }
-
-
-    async function signAndSubmit() {
-        const ncalayerClient = new NCALayerClient();
-        document.getElementById("preview").innerText = "Подключение к NCALayer...";
-
-        try {
-            await ncalayerClient.connect();
-            const cms = await ncalayerClient.basicsSignCMS(
-                NCALayerClient.basicsStorageAll,
-                btoaUtf8(previewText),
-                NCALayerClient.basicsCMSParamsAttached,
-                NCALayerClient.basicsSignerSignAny
-            );
-
-            const form = document.getElementById("survey-form");
-            const formData = new FormData(form);
-            formData.append("signature", cms);
-
-            const response = await fetch("{% url 'survey_submit_api' %}", {
-                method: "POST",
-                body: formData,
-                headers: {
-                    "X-CSRFToken": form.querySelector("[name=csrfmiddlewaretoken]").value
-                }
-            });
-
-            const result = await response.json();
-            alert(result.message || (result.success ? "Отправлено!" : "Ошибка"));
-
-            if (result.success) {
-                window.location.reload();
-            }
-
-        } catch (err) {
-            alert("Ошибка при подписании или отправке: " + err.toString());
+    function filterLatinField(el) {
+        const isLatin = /^[\x00-\x7F]*$/.test(el.value);
+        if (!isLatin) {
+            el.style.borderColor = "red";
+        } else {
+            el.style.borderColor = "";
         }
     }
+
+
+    function filterLatinAndCount(el, index) {
+        const value = el.value;
+        const isLatin = /^[\x00-\x7F]*$/.test(value);
+
+        // Обновить предупреждение
+        const warn = document.getElementById(`latin_warn_${index}`);
+        if (!isLatin) {
+            warn.style.display = "block";
+            el.style.borderColor = "red";
+        } else {
+            warn.style.display = "none";
+            el.style.borderColor = "";
+        }
+
+        // Обновить счётчик слов
+        const wordCount = countWords(value);
+        document.getElementById(`counter_${index}`).innerText = `Слов: ${wordCount}`;
+
+        // Обновить общий счёт
+        validateTotal();
+    }
+
+    function validateTotal() {
+        totalWords = 0;
+        allFieldsValid = true;
+
+        fields.forEach(i => {
+            const el = document.getElementById(`answer_${i}`);
+            const value = el.value;
+            const isLatin = /^[\x00-\x7F]*$/.test(value);
+            const words = countWords(value);
+            totalWords += words;
+
+            if (!isLatin) {
+                allFieldsValid = false;
+            }
+        });
+
+        const totalEl = document.getElementById("total_counter");
+        const isValidTotal = totalWords <= 1500 && allFieldsValid;
+        totalEl.innerText = `Общий счёт: ${totalWords} / максимум 1500 слов`;
+        totalEl.style.color = isValidTotal ? "green" : "red";
+        document.getElementById("submit-button").disabled = !isValidTotal;
+
+
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        validateTotal();
+    });
 </script>

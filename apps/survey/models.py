@@ -14,6 +14,7 @@ class SurveyResponse(models.Model):
     gender = models.CharField("Пол", max_length=6, choices=GENDER_CHOICES)
     age = models.PositiveIntegerField("Возраст")
     submitted_at = models.DateTimeField("Дата заполнения", auto_now_add=True)
+    is_submitted = models.BooleanField("Отправлено", default=False)
     signature = models.TextField("Подпись")
 
     # Ответы на вопросы

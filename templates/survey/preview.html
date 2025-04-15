@@ -1,0 +1,68 @@
+{% load static %}
+<h2>Предпросмотр ваших ответов</h2>
+
+<ul>
+    <li><strong>ФИО:</strong> {{ survey.full_name }}</li>
+    <li><strong>Пол:</strong> {{ survey.gender }}</li>
+    <li><strong>Возраст:</strong> {{ survey.age }}</li>
+</ul>
+
+<h3>Ответы:</h3>
+<ol>
+    <li>{{ survey.answer_1 }}</li>
+    <li>{{ survey.answer_2 }}</li>
+    <li>{{ survey.answer_3 }}</li>
+    <li>{{ survey.answer_4 }}</li>
+    <li>{{ survey.answer_5 }}</li>
+</ol>
+
+<button onclick="signSurvey()">Подписать и отправить</button>
+
+<script src="{% static 'js/ncalayer-client.js' %}"></script>
+<script>
+    function btoaUtf8(str) {
+        return btoa(unescape(encodeURIComponent(str)));
+    }
+
+    async function signSurvey() {
+        const previewText = `{{ preview_json|escapejs }}`;
+        console.log("JSON для подписи:", previewText);
+
+        const documentBase64 = btoaUtf8(previewText);
+        const ncalayerClient = new NCALayerClient();
+
+        try {
+            await ncalayerClient.connect();
+            let signature = await ncalayerClient.basicsSignCMS(
+                NCALayerClient.basicsStorageAll,
+                documentBase64,
+                NCALayerClient.basicsCMSParamsDetached,
+                NCALayerClient.basicsSignerSignAny
+            );
+
+            if (signature.includes("-----BEGIN CMS-----")) {
+                signature = signature
+                    .replace("-----BEGIN CMS-----", "")
+                    .replace("-----END CMS-----", "")
+                    .replace(/\r?\n|\r/g, "")
+                    .trim();
+            }
+
+            const formData = new FormData();
+            formData.append("signature", signature);
+
+            const response = await fetch("{% url 'survey_sign' %}", {
+                method: "POST",
+                body: formData
+            });
+            console.log("PREVIEW TEXT (frontend):", previewText);
+
+            const result = await response.json();
+            alert(result.message);
+            if (result.success) window.location.href = "/survey/";
+
+        } catch (err) {
+            alert("Ошибка при подписании: " + err);
+        }
+    }
+</script>

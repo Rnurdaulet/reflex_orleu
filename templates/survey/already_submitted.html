@@ -1,2 +1,16 @@
 <h2>Вы уже прошли анкету</h2>
-<p>Спасибо, {{ response.full_name }}!</p>
+<p>Спасибо, {{ survey.full_name }}!</p>
+
+<ul>
+    <li><strong>Пол:</strong> {{ survey.gender }}</li>
+    <li><strong>Возраст:</strong> {{ survey.age }}</li>
+</ul>
+
+<h3>Ваши ответы:</h3>
+<ol>
+    <li>{{ survey.answer_1 }}</li>
+    <li>{{ survey.answer_2 }}</li>
+    <li>{{ survey.answer_3 }}</li>
+    <li>{{ survey.answer_4 }}</li>
+    <li>{{ survey.answer_5 }}</li>
+</ol>

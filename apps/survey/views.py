@@ -1,6 +1,22 @@
-from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
 from .models import Person, SurveyResponse
+import base64, json, requests
+
+def build_preview_text(survey):
+    return json.dumps({
+        "external_id": survey.external_id,
+        "full_name": survey.full_name,
+        "gender": survey.gender,
+        "age": survey.age,
+        "answer_1": survey.answer_1,
+        "answer_2": survey.answer_2,
+        "answer_3": survey.answer_3,
+        "answer_4": survey.answer_4,
+        "answer_5": survey.answer_5,
+    }, ensure_ascii=False, indent=2)
 
 @login_required
 def survey_page(request):
@@ -8,77 +24,83 @@ def survey_page(request):
     if not person:
         return render(request, "survey/no_person.html")
 
-    if hasattr(person, "surveyresponse"):
-        return render(request, "survey/already_submitted.html", {"response": person.surveyresponse})
+    if hasattr(person, "surveyresponse") and person.surveyresponse.is_submitted:
+        return render(request, "survey/already_submitted.html", {
+            "survey": person.surveyresponse  # 👈 важно!
+        })
 
     return render(request, "survey/form.html", {"person": person})
 
+@login_required
+def submit_survey_draft(request):
+    if request.method != "POST":
+        return redirect("survey_page")
 
-import json
-import base64
-import requests
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from .models import Person, SurveyResponse
+    person = Person.objects.get(user=request.user)
+    data = request.POST
 
-NCANODE_URL = "http://192.168.28.12:14579/cms/verify"
+    survey, _ = SurveyResponse.objects.update_or_create(
+        person=person,
+        defaults={
+            "external_id": data.get("external_id"),
+            "full_name": data.get("full_name"),
+            "gender": data.get("gender"),
+            "age": data.get("age"),
+            "answer_1": data.get("answer_1"),
+            "answer_2": data.get("answer_2"),
+            "answer_3": data.get("answer_3"),
+            "answer_4": data.get("answer_4"),
+            "answer_5": data.get("answer_5"),
+            "is_submitted": False
+        }
+    )
+    return redirect("survey_preview")
+
+@login_required
+def survey_preview(request):
+    person = Person.objects.get(user=request.user)
+    survey = person.surveyresponse
+    preview_json = build_preview_text(survey)
+    return render(request, "survey/preview.html", {
+        "survey": survey,
+        "preview_json": preview_json
+    })
 
 @csrf_exempt
-def submit_survey_response(request):
+@login_required
+def finalize_signed_survey(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "Метод не поддерживается"}, status=405)
 
     try:
         signed_data = request.POST.get("signature")
-        original_text = ""
+        person = Person.objects.get(user=request.user)
+        survey = person.surveyresponse
 
-        # Собираем оригинальные данные (тот же формат, что подписывался на фронте)
-        for field in ["external_id", "full_name", "gender", "age", "answer_1", "answer_2", "answer_3", "answer_4", "answer_5"]:
-            value = request.POST.get(field, "")
-            original_text += f"{field}: {value}\n"
+        preview_text = build_preview_text(survey)
+        original_data = base64.b64encode(preview_text.encode("utf-8")).decode("utf-8")
 
-        original_data = base64.b64encode(original_text.encode("utf-8")).decode("utf-8")
+        print("PREVIEW TEXT (backend):")
+        print(preview_text)
 
-        # Проверяем подпись через NCANode
-        response = requests.post(NCANODE_URL, json={
+        response = requests.post("http://192.168.28.12:14579/cms/verify", json={
             "cms": signed_data,
-            "revocationCheck": ["OCSP"]
+            "revocationCheck": ["OCSP"],
+            "data": original_data,
+            "detached": True
         }, timeout=5)
+
         response.raise_for_status()
         result = response.json()
 
-        if not result.get("valid") or not result.get("signers"):
-            return JsonResponse({"success": False, "message": "Подпись не прошла проверку"}, status=400)
+        if not result.get("valid"):
+            return JsonResponse({"success": False, "message": "Подпись не прошла проверку"})
 
-        subject = result["signers"][0]["certificates"][0]["subject"]
-        iin = subject.get("iin")
-        full_name_cert = subject.get("commonName")
+        survey.signature = signed_data
+        survey.is_submitted = True
+        survey.save()
 
-        if not iin:
-            return JsonResponse({"success": False, "message": "ИИН не найден в сертификате"}, status=400)
-
-        person = Person.objects.filter(iin=iin).first()
-        if not person:
-            return JsonResponse({"success": False, "message": "Пользователь не найден"}, status=404)
-
-        if hasattr(person, "surveyresponse"):
-            return JsonResponse({"success": False, "message": "Вы уже отправили анкету"}, status=409)
-
-        SurveyResponse.objects.create(
-            person=person,
-            external_id=request.POST.get("external_id"),
-            full_name=request.POST.get("full_name"),
-            gender=request.POST.get("gender"),
-            age=request.POST.get("age"),
-            signature=signed_data,
-            answer_1=request.POST.get("answer_1"),
-            answer_2=request.POST.get("answer_2"),
-            answer_3=request.POST.get("answer_3"),
-            answer_4=request.POST.get("answer_4"),
-            answer_5=request.POST.get("answer_5"),
-        )
-
-        return JsonResponse({"success": True, "message": "Ответ принят. Спасибо!"})
+        return JsonResponse({"success": True, "message": "Успешно отправлено"})
 
     except Exception as e:
-        return JsonResponse({"success": False, "message": f"Ошибка: {str(e)}"}, status=500)
+        return JsonResponse({"success": False, "message": str(e)}, status=500)
