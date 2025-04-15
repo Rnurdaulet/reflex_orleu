@@ -1,0 +1,22 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Вход через ЭЦП</title>
+</head>
+<body>
+<h2>Вход через ЭЦП</h2>
+<input type="text" id="groupid" value="LOGIN" hidden>
+<button id="signButton">Подписать и войти</button>
+<p id="status">Ожидание действия...</p>
+
+<!-- Подключение скриптов -->
+<script>
+    const csrfToken = "{{ csrf_token }}";
+</script>
+
+<script src="{% static 'js/ncalayer-client.js' %}"></script>
+<script src="{% static 'js/LoginESP.js' %}"></script>
+</body>
+</html>
