@@ -15,7 +15,7 @@ apps/events/*/migrations/*.py
 
 # Игнорировать файлы из .idea (например, если вы используете PyCharm/IntelliJ)
 .idea/
-
+.idea
 # Backup files #
 *.bak
 
