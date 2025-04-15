@@ -22,4 +22,5 @@ from apps.people import urls
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("", include("apps.people.urls")),
+    path("", include("apps.survey.urls")),
 ]

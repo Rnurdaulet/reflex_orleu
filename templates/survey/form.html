@@ -1,0 +1,85 @@
+{% load static %}
+<h2>Анкета</h2>
+<form id="survey-form">
+    {% csrf_token %}
+    <input type="text" name="external_id" placeholder="Внешний ID" required><br>
+    <input type="text" name="full_name" placeholder="ФИО" required><br>
+    <select name="gender" required>
+        <option value="male">Мужской</option>
+        <option value="female">Женский</option>
+    </select><br>
+    <input type="number" name="age" placeholder="Возраст" required><br>
+
+    <textarea oninput="this.value = this.value.replace(/[^\x00-\x7F]/g, '')" name="answer_1" placeholder="Ответ на вопрос 1" required></textarea><br>
+    <textarea oninput="this.value = this.value.replace(/[^\x00-\x7F]/g, '')" name="answer_2" placeholder="Ответ на вопрос 2" required></textarea><br>
+    <textarea oninput="this.value = this.value.replace(/[^\x00-\x7F]/g, '')" name="answer_3" placeholder="Ответ на вопрос 3" required></textarea><br>
+    <textarea oninput="this.value = this.value.replace(/[^\x00-\x7F]/g, '')" name="answer_4" placeholder="Ответ на вопрос 4" required></textarea><br>
+    <textarea oninput="this.value = this.value.replace(/[^\x00-\x7F]/g, '')" name="answer_5" placeholder="Ответ на вопрос 5" required></textarea><br>
+
+    <button type="button" onclick="showPreview()">Предпросмотр</button>
+
+    <div id="preview" style="border:1px solid gray; padding:10px; margin:10px 0; display:none;"></div>
+    <button type="button" onclick="signAndSubmit()">Подписать и отправить</button>
+</form>
+
+<script src="{% static 'js/ncalayer-client.js' %}"></script>
+<script>
+    let previewText = "";
+
+    function showPreview() {
+        const form = document.getElementById("survey-form");
+        const formData = new FormData(form);
+        previewText = "";
+
+        for (let [key, value] of formData.entries()) {
+            if (key !== 'csrfmiddlewaretoken') {
+                previewText += `${key}: ${value}\n`;
+            }
+        }
+
+        document.getElementById("preview").innerText = previewText;
+        document.getElementById("preview").style.display = "block";
+    }
+
+    function btoaUtf8(str) {
+        return btoa(unescape(encodeURIComponent(str)));
+    }
+
+
+    async function signAndSubmit() {
+        const ncalayerClient = new NCALayerClient();
+        document.getElementById("preview").innerText = "Подключение к NCALayer...";
+
+        try {
+            await ncalayerClient.connect();
+            const cms = await ncalayerClient.basicsSignCMS(
+                NCALayerClient.basicsStorageAll,
+                btoaUtf8(previewText),
+                NCALayerClient.basicsCMSParamsAttached,
+                NCALayerClient.basicsSignerSignAny
+            );
+
+            const form = document.getElementById("survey-form");
+            const formData = new FormData(form);
+            formData.append("signature", cms);
+
+            const response = await fetch("{% url 'survey_submit_api' %}", {
+                method: "POST",
+                body: formData,
+                headers: {
+                    "X-CSRFToken": form.querySelector("[name=csrfmiddlewaretoken]").value
+                }
+            });
+
+            const result = await response.json();
+            alert(result.message || (result.success ? "Отправлено!" : "Ошибка"));
+
+            if (result.success) {
+                window.location.reload();
+            }
+
+        } catch (err) {
+            alert("Ошибка при подписании или отправке: " + err.toString());
+        }
+    }
+</script>

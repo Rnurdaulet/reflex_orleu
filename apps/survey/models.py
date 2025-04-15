@@ -1,7 +1,9 @@
 from django.db import models
+from apps.people.models import Person
 
 
 class SurveyResponse(models.Model):
+    person = models.OneToOneField(Person, on_delete=models.CASCADE, verbose_name="Пользователь")
     external_id = models.CharField("Внешний ID", max_length=100, unique=True)
     full_name = models.CharField("Имя и фамилия", max_length=255)
 
