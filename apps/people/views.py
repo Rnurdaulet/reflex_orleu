@@ -58,21 +58,20 @@ def login_via_signature(request):
         if not user:
             user = User.objects.create_user(username=iin)
 
-        # Проверка или создание/обновление Person
+        # Проверка и обновление Person (если найден)
         person = Person.objects.filter(iin=iin).first()
         if not person:
-            person = Person.objects.create(
-                iin=iin,
-                full_name=full_name,
-                signature=signed_data,
-                user=user
-            )
-        else:
-            person.full_name = full_name
-            person.signature = signed_data
-            if not person.user:
-                person.user = user
-            person.save()
+            return JsonResponse({
+                "success": False,
+                "message": "Пользователь с таким ИИН не найден в системе"
+            }, status=403)
+
+        # Обновление данных, если Person найден
+        person.full_name = full_name
+        person.signature = signed_data
+        if not person.user:
+            person.user = user
+        person.save()
 
         login(request, user)
 
