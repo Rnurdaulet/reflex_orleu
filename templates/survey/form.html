@@ -19,9 +19,17 @@
 
                     <!-- External ID -->
                     <div class="col-12 col-md-4">
-                        <label for="external_id" class="form-label">External ID</label>
-                        <input type="text" name="external_id" id="external_id" class="form-control" required>
+                        <label for="external_id" class="form-label">ID</label>
+                        <input
+                                type="text"
+                                name="external_id"
+                                id="external_id"
+                                class="form-control"
+                                value="{{ person.external_id }}"
+                                readonly
+                        >
                     </div>
+
 
                     <!-- Gender -->
                     <div class="col-6 col-md-4">
@@ -36,8 +44,17 @@
                     <!-- Age -->
                     <div class="col-6 col-md-4">
                         <label for="age" class="form-label">Age</label>
-                        <input type="number" name="age" id="age" class="form-control" required>
+                        <input
+                                type="number"
+                                name="age"
+                                id="age"
+                                class="form-control"
+                                required
+                                min="18"
+                                max="99"
+                        >
                     </div>
+
                 </div>
 
 
@@ -45,10 +62,9 @@
 
                 {% for i in "12345" %}
                     <div class="mb-4">
-
-
                         {% if i == "1" %}
-                                                    <label for="answer_{{ i }}" class="form-label">{{ i }}. Understanding and Applying the CBC/CBE/CBA Framework</label>
+                            <label for="answer_{{ i }}" class="form-label">{{ i }}. Understanding and Applying the
+                                CBC/CBE/CBA Framework</label>
                             <p class="text-muted small">
                                 <strong>Topic:</strong> CBC, CBE, and CBA as a system.<br>
                                 Briefly describe what CBC, CBE, and CBA mean in your own words. How do these concepts
@@ -56,7 +72,8 @@
                                 or failed, and why.
                             </p>
                         {% elif i == "2" %}
-                                                    <label for="answer_{{ i }}" class="form-label">{{ i }}. Designing Competency-Based Curriculum</label>
+                            <label for="answer_{{ i }}" class="form-label">{{ i }}. Designing Competency-Based
+                                Curriculum</label>
                             <p class="text-muted small">
                                 <strong>Topic:</strong> Curriculum development and learning goals.<br>
                                 How do you define high-quality learning goals, activities, and assessments in a CBC
@@ -64,21 +81,22 @@
                                 what could be improved?
                             </p>
                         {% elif i == "3" %}
-                                                    <label for="answer_{{ i }}" class="form-label">{{ i }}. Assessment Quality: Validity, Reliability, Fairness</label>
+                            <label for="answer_{{ i }}" class="form-label">{{ i }}. Assessment Quality: Validity,
+                                Reliability, Fairness</label>
                             <p class="text-muted small">
                                 <strong>Topic:</strong> Assessment quality: validity, reliability, and fairness.<br>
                                 Think of a test or assessment you reviewed or created. Which parts were valid or
                                 invalid? Was scoring consistent? How did you address fairness and learner diversity?
                             </p>
                         {% elif i == "4" %}
-                                                    <label for="answer_{{ i }}" class="form-label">{{ i }}. Grading and Standard Setting</label>
+                            <label for="answer_{{ i }}" class="form-label">{{ i }}. Grading and Standard Setting</label>
                             <p class="text-muted small">
                                 <strong>Topic:</strong> Grading and standard setting.<br>
                                 Describe the grading system in your context. Is it clear, fair, and aligned with
                                 learning goals? How are cut-off scores determined? What would you improve?
                             </p>
                         {% elif i == "5" %}
-                                                    <label for="answer_{{ i }}" class="form-label">{{ i }}. Professional Use of Rubrics</label>
+                            <label for="answer_{{ i }}" class="form-label">{{ i }}. Professional Use of Rubrics</label>
                             <p class="text-muted small">
                                 <strong>Topic:</strong> Use of rubrics.<br>
                                 How do you use rubrics in your work? Provide an example where a rubric supported
