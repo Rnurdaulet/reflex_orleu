@@ -11,6 +11,7 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # Копируем весь проект
 COPY . .
+RUN mkdir -p /app/staticfiles
 
 # Собираем статику
 RUN python manage.py collectstatic --noinput

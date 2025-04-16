@@ -91,13 +91,16 @@ def finalize_signed_survey(request):
 
         print("PREVIEW TEXT (backend):")
         print(preview_text)
-
+        proxies = {
+            "http": "http://sslvpn-proxy:3128",
+            "https": "http://sslvpn-proxy:3128"
+        }
         response = requests.post("http://192.168.28.12:14579/cms/verify", json={
             "cms": signed_data,
             "revocationCheck": ["OCSP"],
             "data": original_data,
             "detached": True
-        }, timeout=5)
+        }, timeout=5,proxies=proxies)
 
         response.raise_for_status()
         result = response.json()

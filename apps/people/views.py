@@ -30,12 +30,15 @@ def login_via_signature(request):
         signed_data = body.get("signedData")
         if not signed_data:
             return JsonResponse({"success": False, "message": "Подпись не предоставлена"}, status=400)
-
+        proxies = {
+            "http": "http://sslvpn-proxy:3128",
+            "https": "http://sslvpn-proxy:3128"
+        }
         # Проверка подписи через NCANode
         response = requests.post(NCANODE_URL, json={
             "cms": signed_data,
             "revocationCheck": ["OCSP"]
-        }, timeout=5)
+        }, timeout=5,    proxies=proxies)
         response.raise_for_status()
         data = response.json()
 
