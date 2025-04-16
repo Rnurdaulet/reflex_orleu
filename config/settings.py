@@ -129,7 +129,6 @@ STATICFILES_DIRS = [
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://reflex.odx.kz",
     "https://rr.orleu.edu.kz",
 ]
 
