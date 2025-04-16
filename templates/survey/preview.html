@@ -1,68 +1,119 @@
+{% extends "base.html" %}
 {% load static %}
-<h2>Предпросмотр ваших ответов</h2>
+{% block title %}Preview Reflection Report{% endblock %}
 
-<ul>
-    <li><strong>ФИО:</strong> {{ survey.full_name }}</li>
-    <li><strong>Пол:</strong> {{ survey.gender }}</li>
-    <li><strong>Возраст:</strong> {{ survey.age }}</li>
-</ul>
+{% block content %}
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4">
 
-<h3>Ответы:</h3>
-<ol>
-    <li>{{ survey.answer_1 }}</li>
-    <li>{{ survey.answer_2 }}</li>
-    <li>{{ survey.answer_3 }}</li>
-    <li>{{ survey.answer_4 }}</li>
-    <li>{{ survey.answer_5 }}</li>
-</ol>
+                        <h2 class="mb-3">🔍 Preview Your Reflection Report</h2>
+                        <p class="lead">Please review your answers carefully before signing and submitting.</p>
 
-<button onclick="signSurvey()">Подписать и отправить</button>
+                        <!-- Personal Info -->
+                        <ul class="list-group list-group-flush mb-4">
+                            <li class="list-group-item"><strong>Full Name:</strong> {{ survey.full_name }}</li>
+                            <li class="list-group-item"><strong>External ID:</strong> {{ survey.external_id }}</li>
+                            <li class="list-group-item"><strong>Gender:</strong> {{ survey.gender|title }}</li>
+                            <li class="list-group-item"><strong>Age:</strong> {{ survey.age }}</li>
+                        </ul>
 
-<script src="{% static 'js/ncalayer-client.js' %}"></script>
-<script>
-    function btoaUtf8(str) {
-        return btoa(unescape(encodeURIComponent(str)));
-    }
+                        <hr class="my-4">
 
-    async function signSurvey() {
-        const previewText = `{{ preview_json|escapejs }}`;
-        console.log("JSON для подписи:", previewText);
+                        {% for i in "12345" %}
+                            <div class="mb-4">
+                                <h5>
+                                    {{ i }}.
+                                    {% if i == "1" %} CBC, CBE, and CBA as a system
+                                    {% elif i == "2" %} Curriculum development and learning goals
+                                    {% elif i == "3" %} Assessment quality: validity, reliability, and fairness
+                                    {% elif i == "4" %} Grading and standard setting
+                                    {% elif i == "5" %} Use of rubrics
+                                    {% endif %}
+                                </h5>
+                                <div class="border rounded p-3 bg-light">
+                                    {% if i == "1" %}
+                                        {{ survey.answer_1|linebreaks }}
+                                    {% elif i == "2" %}
+                                        {{ survey.answer_2|linebreaks }}
+                                    {% elif i == "3" %}
+                                        {{ survey.answer_3|linebreaks }}
+                                    {% elif i == "4" %}
+                                        {{ survey.answer_4|linebreaks }}
+                                    {% elif i == "5" %}
+                                        {{ survey.answer_5|linebreaks }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
 
-        const documentBase64 = btoaUtf8(previewText);
-        const ncalayerClient = new NCALayerClient();
 
-        try {
-            await ncalayerClient.connect();
-            let signature = await ncalayerClient.basicsSignCMS(
-                NCALayerClient.basicsStorageAll,
-                documentBase64,
-                NCALayerClient.basicsCMSParamsDetached,
-                NCALayerClient.basicsSignerSignAny
-            );
+                        <!-- Signature & Submit -->
+                        <form method="post" action="{% url 'survey_sign' %}" id="sign-form">
+                            {% csrf_token %}
+                            <input type="hidden" id="groupid" value="SIGN_SURVEY">
+                            <div class="d-grid">
+                                <button type="button" class="btn btn-success btn-lg" onclick="signSurvey()">Sign &
+                                    Submit
+                                </button>
+                            </div>
+                        </form>
+                        <p class="mt-3 text-muted" id="status">Awaiting signature...</p>
 
-            if (signature.includes("-----BEGIN CMS-----")) {
-                signature = signature
-                    .replace("-----BEGIN CMS-----", "")
-                    .replace("-----END CMS-----", "")
-                    .replace(/\r?\n|\r/g, "")
-                    .trim();
-            }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-            const formData = new FormData();
-            formData.append("signature", signature);
-
-            const response = await fetch("{% url 'survey_sign' %}", {
-                method: "POST",
-                body: formData
-            });
-            console.log("PREVIEW TEXT (frontend):", previewText);
-
-            const result = await response.json();
-            alert(result.message);
-            if (result.success) window.location.href = "/survey/";
-
-        } catch (err) {
-            alert("Ошибка при подписании: " + err);
+    <script src="{% static 'js/ncalayer-client.js' %}"></script>
+    <script>
+        function btoaUtf8(str) {
+            return btoa(unescape(encodeURIComponent(str)));
         }
-    }
-</script>
+
+        async function signSurvey() {
+            const previewText = `{{ preview_json|escapejs }}`;
+            console.log("JSON для подписи:", previewText);
+
+            const documentBase64 = btoaUtf8(previewText);
+            const ncalayerClient = new NCALayerClient();
+
+            try {
+                await ncalayerClient.connect();
+                let signature = await ncalayerClient.basicsSignCMS(
+                    NCALayerClient.basicsStorageAll,
+                    documentBase64,
+                    NCALayerClient.basicsCMSParamsDetached,
+                    NCALayerClient.basicsSignerSignAny
+                );
+
+                if (signature.includes("-----BEGIN CMS-----")) {
+                    signature = signature
+                        .replace("-----BEGIN CMS-----", "")
+                        .replace("-----END CMS-----", "")
+                        .replace(/\r?\n|\r/g, "")
+                        .trim();
+                }
+
+                const formData = new FormData();
+                formData.append("signature", signature);
+
+                const response = await fetch("{% url 'survey_sign' %}", {
+                    method: "POST",
+                    body: formData
+                });
+                console.log("PREVIEW TEXT (frontend):", previewText);
+
+                const result = await response.json();
+                alert(result.message);
+                if (result.success) window.location.href = "/survey/";
+
+            } catch (err) {
+                alert("Ошибка при подписании: " + err);
+            }
+        }
+    </script>
+{% endblock %}

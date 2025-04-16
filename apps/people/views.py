@@ -75,7 +75,7 @@ def login_via_signature(request):
 
         return JsonResponse({
             "success": True,
-            "redirectUrl": "/",
+            "redirectUrl": "/survey/",
             "fullName": full_name
         })
 
@@ -88,3 +88,28 @@ def login_via_signature(request):
 
 def signature_login_page(request):
     return render(request, "people/signature_login.html")
+
+def home_page(request):
+    return render(request, "home.html")
+
+from django.contrib.auth import logout
+from django.shortcuts import redirect
+
+def logout_view(request):
+    logout(request)
+    return redirect("/")
+
+
+from django.contrib.auth.views import LoginView
+from django.shortcuts import redirect
+
+class CustomLoginView(LoginView):
+    template_name = "login_password.html"
+    redirect_authenticated_user = True
+
+    def get_success_url(self):
+        user = self.request.user
+        if user.is_staff:
+            return "/survey/list"
+        return "/"
+

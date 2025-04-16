@@ -1,19 +1,102 @@
-<h2>Вы уже прошли анкету</h2>
-<p>Спасибо, {{ survey.full_name }}!</p>
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Survey Submitted{% endblock %}
 
-<ul>
-    <li><strong>Пол:</strong> {{ survey.gender }}</li>
-    <li><strong>Возраст:</strong> {{ survey.age }}</li>
-</ul>
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
 
-<h3>Ваши ответы:</h3>
-<ol>
-    <li>{{ survey.answer_1 }}</li>
-    <li>{{ survey.answer_2 }}</li>
-    <li>{{ survey.answer_3 }}</li>
-    <li>{{ survey.answer_4 }}</li>
-    <li>{{ survey.answer_5 }}</li>
-</ol>
-{% if survey.pdf_file %}
-    <a href="{{ survey.pdf_file.url }}" target="_blank">Скачать PDF анкеты</a>
-{% endif %}
+          <h2 class="mb-3 text-success"> You have already submitted the reflection report</h2>
+          <p class="lead">Thank you, <strong>{{ survey.full_name }}</strong>!</p>
+
+          <ul class="list-group list-group-flush mb-4">
+            <li class="list-group-item"><strong>Gender:</strong> {{ survey.gender|title }}</li>
+            <li class="list-group-item"><strong>Age:</strong> {{ survey.age }}</li>
+          </ul>
+
+          <h5 class="mb-3">Your Responses:</h5>
+
+          <div class="accordion" id="responsesAccordion">
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="heading1">
+                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse1">
+                  1. CBC, CBE, and CBA as a system
+                </button>
+              </h2>
+              <div id="collapse1" class="accordion-collapse collapse show" data-bs-parent="#responsesAccordion">
+                <div class="accordion-body">
+                  {{ survey.answer_1|linebreaks }}
+                </div>
+              </div>
+            </div>
+
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="heading2">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse2">
+                  2. Curriculum development and learning goals
+                </button>
+              </h2>
+              <div id="collapse2" class="accordion-collapse collapse" data-bs-parent="#responsesAccordion">
+                <div class="accordion-body">
+                  {{ survey.answer_2|linebreaks }}
+                </div>
+              </div>
+            </div>
+
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="heading3">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse3">
+                  3. Assessment quality: validity, reliability, and fairness
+                </button>
+              </h2>
+              <div id="collapse3" class="accordion-collapse collapse" data-bs-parent="#responsesAccordion">
+                <div class="accordion-body">
+                  {{ survey.answer_3|linebreaks }}
+                </div>
+              </div>
+            </div>
+
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="heading4">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse4">
+                  4. Grading and standard setting
+                </button>
+              </h2>
+              <div id="collapse4" class="accordion-collapse collapse" data-bs-parent="#responsesAccordion">
+                <div class="accordion-body">
+                  {{ survey.answer_4|linebreaks }}
+                </div>
+              </div>
+            </div>
+
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="heading5">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse5">
+                  5. Use of rubrics
+                </button>
+              </h2>
+              <div id="collapse5" class="accordion-collapse collapse" data-bs-parent="#responsesAccordion">
+                <div class="accordion-body">
+                  {{ survey.answer_5|linebreaks }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {% if survey.pdf_file %}
+            <div class="mt-4 text-center">
+              <a href="{{ survey.pdf_file.url }}" target="_blank" class="btn btn-outline-primary">
+                 Download your report as PDF
+              </a>
+            </div>
+          {% endif %}
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

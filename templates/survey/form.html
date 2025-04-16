@@ -1,43 +1,41 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Анкета{% endblock %}
+{% block title %}Reflection Report{% endblock %}
 
 {% block content %}
-    <h2 class="mb-4">Анкета</h2>
+    <h2 class="mb-4">Reflection Report</h2>
     <div class="row">
         <!-- Левая колонка: форма -->
         <div class="col-lg-8">
             <form method="post" action="{% url 'survey_submit' %}" id="survey-form" class="needs-validation" novalidate>
                 {% csrf_token %}
                 <div class="row">
-
-
-                    <!-- ФИО -->
+                    <!-- Full Name -->
                     <div class="col-12 col-md-12">
-                        <label for="full_name" class="form-label">ФИО (латиница)</label>
+                        <label for="full_name" class="form-label">Full Name (Latin letters only)</label>
                         <input type="text" name="full_name" id="full_name" class="form-control"
                                oninput="filterLatinField(this)" required>
                     </div>
-                    <!-- Внешний ID -->
+
+                    <!-- External ID -->
                     <div class="col-12 col-md-4">
-                        <label for="external_id" class="form-label">Внешний ID</label>
-                        <input type="text" name="external_id" id="external_id" class="form-control"
-                                required>
+                        <label for="external_id" class="form-label">External ID</label>
+                        <input type="text" name="external_id" id="external_id" class="form-control" required>
                     </div>
 
-                    <!-- Пол -->
+                    <!-- Gender -->
                     <div class="col-6 col-md-4">
-                        <label for="gender" class="form-label">Пол</label>
+                        <label for="gender" class="form-label">Gender</label>
                         <select name="gender" id="gender" class="form-select" required>
                             <option value="">—</option>
-                            <option value="male">Мужской</option>
-                            <option value="female">Женский</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
                         </select>
                     </div>
 
-                    <!-- Возраст -->
+                    <!-- Age -->
                     <div class="col-6 col-md-4">
-                        <label for="age" class="form-label">Возраст</label>
+                        <label for="age" class="form-label">Age</label>
                         <input type="number" name="age" id="age" class="form-control" required>
                     </div>
                 </div>
@@ -46,17 +44,53 @@
                 <hr class="my-4">
 
                 {% for i in "12345" %}
-                    <div class="mb-3">
-                        <label for="answer_{{ i }}" class="form-label">Ответ на вопрос {{ i }}</label>
-                        <textarea id="answer_{{ i }}" name="answer_{{ i }}" class="form-control" rows="3"
-                                  oninput="filterLatinAndCount(this, {{ i }})" required></textarea>
-                        <div id="counter_form_{{ i }}" class="form-text">Слов: 0</div>
+                    <div class="mb-4">
+                        <label for="answer_{{ i }}" class="form-label">Question {{ i }}</label>
 
+                        {% if i == "1" %}
+                            <p class="text-muted small">
+                                <strong>Topic:</strong> CBC, CBE, and CBA as a system.<br>
+                                Briefly describe what CBC, CBE, and CBA mean in your own words. How do these concepts
+                                work together? Provide one example from your context where this integration succeeded —
+                                or failed, and why.
+                            </p>
+                        {% elif i == "2" %}
+                            <p class="text-muted small">
+                                <strong>Topic:</strong> Curriculum development and learning goals.<br>
+                                How do you define high-quality learning goals, activities, and assessments in a CBC
+                                context? Describe a project or lesson you designed or observed. What worked well, and
+                                what could be improved?
+                            </p>
+                        {% elif i == "3" %}
+                            <p class="text-muted small">
+                                <strong>Topic:</strong> Assessment quality: validity, reliability, and fairness.<br>
+                                Think of a test or assessment you reviewed or created. Which parts were valid or
+                                invalid? Was scoring consistent? How did you address fairness and learner diversity?
+                            </p>
+                        {% elif i == "4" %}
+                            <p class="text-muted small">
+                                <strong>Topic:</strong> Grading and standard setting.<br>
+                                Describe the grading system in your context. Is it clear, fair, and aligned with
+                                learning goals? How are cut-off scores determined? What would you improve?
+                            </p>
+                        {% elif i == "5" %}
+                            <p class="text-muted small">
+                                <strong>Topic:</strong> Use of rubrics.<br>
+                                How do you use rubrics in your work? Provide an example where a rubric supported
+                                learning or assessment. What are key success factors in rubric design and use?
+                            </p>
+                        {% endif %}
+
+                        <textarea id="answer_{{ i }}" name="answer_{{ i }}" class="form-control" rows="4"
+                                  oninput="filterLatinAndCount(this, {{ i }})" required></textarea>
+
+                        <div id="counter_form_{{ i }}" class="form-text">Words: 0</div>
                         <div id="latin_warn_{{ i }}" class="form-text text-danger latin-warning" style="display: none;">
-                            Допустимы только латинские символы.
+                            Only Latin characters are allowed.
                         </div>
                     </div>
                 {% endfor %}
+
             </form>
         </div>
 
@@ -64,18 +98,17 @@
         <div class="col-lg-4">
             <div class="card shadow-sm">
                 <div class="card-body">
-                    <h5 class="card-title">📊 Статистика</h5>
+                    <h5 class="card-title">📊 Word Count Summary</h5>
                     <ul class="list-group list-group-flush mb-3">
                         {% for i in "12345" %}
                             <li class="list-group-item d-flex justify-content-between align-items-center">
-                                Вопрос {{ i }}
-                                <span id="counter_card_{{ i }}" class="badge bg-secondary">0 слов</span>
-
+                                Section {{ i }}
+                                <span id="counter_card_{{ i }}" class="badge bg-secondary">0 words</span>
                             </li>
                         {% endfor %}
                     </ul>
                     <hr>
-                    <p id="total_counter" class="fw-bold text-danger">Общий счёт: 0 / максимум 1500 слов</p>
+                    <p id="total_counter" class="fw-bold text-danger">Total: 0 / max 1500 words</p>
                     <div class="progress mb-3">
                         <div class="progress-bar bg-success" id="progress-bar" role="progressbar" style="width: 0%">
                             0%
@@ -83,13 +116,14 @@
                     </div>
 
                     <div class="d-grid">
-                        <button type="submit" form="survey-form" id="submit-button" class="btn btn-primary">Сохранить и
-                            просмотреть
+                        <button type="submit" form="survey-form" id="submit-button" class="btn btn-primary">
+                            Save & Preview
                         </button>
                     </div>
                 </div>
             </div>
         </div>
+
     </div>
 
 
@@ -129,8 +163,9 @@
             const wordCount = countWords(value);
 
             // Обновим оба счётчика:
-            document.getElementById(`counter_form_${index}`).innerText = `Слов: ${wordCount}`;
-            document.getElementById(`counter_card_${index}`).innerText = `${wordCount} слов`;
+            document.getElementById(`counter_form_${index}`).innerText = `Words: ${wordCount}`;
+            document.getElementById(`counter_card_${index}`).innerText = `${wordCount} words`;
+
 
             validateTotal();
         }
@@ -150,7 +185,7 @@
 
             const totalEl = document.getElementById("total_counter");
             const isValidTotal = totalWords <= 1500 && allFieldsValid;
-            totalEl.innerText = `Общий счёт: ${totalWords} / максимум 1500 слов`;
+            totalEl.innerText = `Total: ${totalWords} / max 1500 words`;
             totalEl.classList.toggle("text-danger", !isValidTotal);
             totalEl.classList.toggle("text-success", isValidTotal);
             document.getElementById("submit-button").disabled = !isValidTotal;

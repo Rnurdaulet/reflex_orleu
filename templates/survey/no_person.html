@@ -1,12 +1,26 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <title>Анкета недоступна</title>
-</head>
-<body>
-    <h2>Анкета недоступна</h2>
-    <p>К вашему аккаунту не привязан профиль участника (Person).</p>
-    <p>Пожалуйста, обратитесь к администратору или войдите через ЭЦП.</p>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}Person Not Found{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center p-4">
+
+          <h2 class="text-danger mb-3"> Person not found</h2>
+          <p class="lead mb-4">
+            Unfortunately, your digital ID (IIN) was not found in our system.
+          </p>
+          <p>Please sign in using your digital signature to proceed.</p>
+
+          <a href="{% url 'signature_login_page' %}" class="btn btn-primary mt-3">
+             Sign with Digital Signature
+          </a>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

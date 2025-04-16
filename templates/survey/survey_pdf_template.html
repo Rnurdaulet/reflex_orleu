@@ -1,31 +1,97 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
+    <title>Reflection Report PDF</title>
     <style>
-        body { font-family: DejaVu Sans, sans-serif; font-size: 12pt; }
-        h2 { text-align: center; }
-        .answer { margin-bottom: 10px; }
+        body {
+            font-family: DejaVu Sans, sans-serif;
+            font-size: 11pt;
+            line-height: 1.6;
+            margin: 40px;
+        }
+
+        h1, h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h3 {
+            margin-top: 25px;
+            margin-bottom: 10px;
+            font-size: 13pt;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .question {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .answer {
+            white-space: pre-line;
+        }
+
+        .meta {
+            margin-bottom: 30px;
+        }
+
+        .meta li {
+            list-style: none;
+            margin-bottom: 5px;
+        }
+
+        hr {
+            margin: 20px 0;
+        }
     </style>
 </head>
 <body>
-    <h2>{{ title }}</h2>
 
-    <p><strong>ФИО:</strong> {{ survey.full_name }}</p>
-    <p><strong>ИИН:</strong> {{ survey.person.iin }}</p>
-    <p><strong>Пол:</strong> {{ survey.gender }}</p>
-    <p><strong>Возраст:</strong> {{ survey.age }}</p>
-    <p><strong>Дата заполнения:</strong> {{ survey.submitted_at|date:"d.m.Y H:i" }}</p>
+<h1>Reflection Report</h1>
 
-    <hr>
+<ul class="meta">
+    <li><strong>Full Name:</strong> {{ survey.full_name }}</li>
+    <li><strong>External ID:</strong> {{ survey.external_id }}</li>
+    <li><strong>Gender:</strong> {{ survey.gender|title }}</li>
+    <li><strong>Age:</strong> {{ survey.age }}</li>
+    <li><strong>Submission Date:</strong> {{ survey.submitted_at|date:"F j, Y, H:i" }}</li>
+</ul>
 
-    <div class="answer"><strong>1.</strong> {{ survey.answer_1 }}</div>
-    <div class="answer"><strong>2.</strong> {{ survey.answer_2 }}</div>
-    <div class="answer"><strong>3.</strong> {{ survey.answer_3 }}</div>
-    <div class="answer"><strong>4.</strong> {{ survey.answer_4 }}</div>
-    <div class="answer"><strong>5.</strong> {{ survey.answer_5 }}</div>
+<hr>
 
-    <hr>
-    <p>{{ note }}</p>
+<div class="section">
+    <h3>1. CBC, CBE, and CBA as a system</h3>
+    <div class="answer">{{ survey.answer_1|linebreaksbr }}</div>
+</div>
+
+<div class="section">
+    <h3>2. Curriculum development and learning goals</h3>
+    <div class="answer">{{ survey.answer_2|linebreaksbr }}</div>
+</div>
+
+<div class="section">
+    <h3>3. Assessment quality: validity, reliability, and fairness</h3>
+    <div class="answer">{{ survey.answer_3|linebreaksbr }}</div>
+</div>
+
+<div class="section">
+    <h3>4. Grading and standard setting</h3>
+    <div class="answer">{{ survey.answer_4|linebreaksbr }}</div>
+</div>
+
+<div class="section">
+    <h3>5. Use of rubrics</h3>
+    <div class="answer">{{ survey.answer_5|linebreaksbr }}</div>
+</div>
+
+<hr>
+
+<p><strong>Signature:</strong></p>
+<p style="font-size: 10pt; word-break: break-all;">{{ survey.signature|default:"(not available)" }}</p>
+
 </body>
 </html>

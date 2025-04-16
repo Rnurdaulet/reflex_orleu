@@ -1,22 +1,50 @@
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <title>Вход через ЭЦП</title>
-</head>
-<body>
-<h2>Вход через ЭЦП</h2>
-<input type="text" id="groupid" value="LOGIN" hidden>
-<button id="signButton">Подписать и войти</button>
-<p id="status">Ожидание действия...</p>
+{% block title %}Digital Signature Login{% endblock %}
 
-<!-- Подключение скриптов -->
-<script>
-    const csrfToken = "{{ csrf_token }}";
-</script>
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
 
-<script src="{% static 'js/ncalayer-client.js' %}"></script>
-<script src="{% static 'js/LoginESP.js' %}"></script>
-</body>
-</html>
+                    {% if user.is_authenticated %}
+                        <h3 class="text-success text-center mb-4">You are already logged in</h3>
+                        <p class="text-center">
+                            Welcome back, <strong>{{ user.get_full_name|default:user.username }}</strong>!<br>
+                            You may proceed to <a href="{% url 'survey_page' %}">fill out your survey</a>.
+                        </p>
+                    {% else %}
+                        <h3 class="mb-4 text-center">Login via Digital Signature</h3>
+
+                        <!-- Hidden group ID -->
+                        <input type="text" id="groupid" value="LOGIN" hidden>
+
+                        <!-- Sign button -->
+                        <div class="d-grid mb-3">
+                            <button id="signButton" class="btn btn-lg btn-primary">
+                                Sign & Login
+                            </button>
+                        </div>
+
+                        <!-- Status message -->
+                        <div id="status" class="alert alert-secondary text-center mb-0">
+                            Waiting for your action...
+                        </div>
+                    {% endif %}
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not user.is_authenticated %}
+    <script>
+        const csrfToken = "{{ csrf_token }}";
+    </script>
+    <script src="{% static 'js/ncalayer-client.js' %}"></script>
+    <script src="{% static 'js/LoginESP.js' %}"></script>
+{% endif %}
+{% endblock %}
