@@ -38,7 +38,7 @@ def login_via_signature(request):
         response = requests.post(NCANODE_URL, json={
             "cms": signed_data,
             "revocationCheck": ["OCSP"]
-        }, timeout=5,    proxies=proxies)
+        }, timeout=15,    proxies=proxies)
         response.raise_for_status()
         data = response.json()
 

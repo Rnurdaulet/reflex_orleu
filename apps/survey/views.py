@@ -100,7 +100,7 @@ def finalize_signed_survey(request):
             "revocationCheck": ["OCSP"],
             "data": original_data,
             "detached": True
-        }, timeout=5,proxies=proxies)
+        }, timeout=30,proxies=proxies)
 
         response.raise_for_status()
         result = response.json()
