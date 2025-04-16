@@ -5,7 +5,7 @@ services:
     volumes:
       - .:/app
     expose:
-      - "8000"  # Лучше expose, если порт не нужен снаружи напрямую
+      - "8000"
     env_file:
       - .env
     depends_on:
@@ -14,7 +14,7 @@ services:
       - traefik_traefik-net
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.reflex.rule=Host(`reflex.odx.kz`)"
+      - "traefik.http.routers.reflex.rule=Host(`rr.orleu.edu.kz`)"
       - "traefik.http.routers.reflex.entrypoints=websecure"
       - "traefik.http.routers.reflex.tls.certresolver=myresolver"
       - "traefik.http.services.reflex.loadbalancer.server.port=8000"

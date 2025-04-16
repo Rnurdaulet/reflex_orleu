@@ -17,7 +17,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
+from dotenv import load_dotenv
 
+load_dotenv()
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-txnu+gg+&h1zhdptir3p-4$mcf#1n5)4wmlvjey1$=7wqn5l(h'
 
@@ -26,9 +28,7 @@ DEBUG = os.getenv("DEBUG", "0") == "1"
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 
-from dotenv import load_dotenv
 
-load_dotenv()
 # Application definition
 
 INSTALLED_APPS = [
@@ -129,12 +129,9 @@ STATICFILES_DIRS = [
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://reflex.odx.kz",  # Добавь твой домен
+    "https://reflex.odx.kz",
+    "https://rr.orleu.edu.kz/",
 ]
-
-
-
-
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
