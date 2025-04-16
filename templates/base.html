@@ -64,6 +64,11 @@
             <div class="offcanvas-body pt-0">
                 <ul class="navbar-nav">
                     {% if user.is_authenticated %}
+                        {% if user.is_staff %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'survey_list' %}">Survey List</a>
+                            </li>
+                        {% endif %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'logout' %}">Logout</a>
                         </li>

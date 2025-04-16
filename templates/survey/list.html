@@ -1,18 +1,18 @@
 {% extends 'base.html' %}
-{% block title %}Все анкеты{% endblock %}
+{% block title %}All Survey Responses{% endblock %}
 
 {% block content %}
-<h2 class="mb-4">Список анкет</h2>
+<h2 class="mb-4">Survey Responses</h2>
 
 <!-- Search & Filter -->
 <div data-filter-list='{"searchClass": "table-search", "listClass": "table-list", "sortClass": "table-sort", "valueNames": ["order", "full-name", "iin", "external-id"]}'>
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div class="position-relative" style="max-width: 20rem;">
       <i class="fi-search position-absolute top-50 start-0 translate-middle-y ms-3"></i>
-      <input type="search" class="table-search form-control form-icon-start" placeholder="Поиск...">
+      <input type="search" class="table-search form-control form-icon-start" placeholder="Search...">
     </div>
     <a href="{% url 'survey_download_all' %}" class="btn btn-sm btn-primary">
-      📦 Скачать всё PDF архивом
+      📦 Download All as ZIP
     </a>
   </div>
 
@@ -25,13 +25,13 @@
             <button type="button" class="btn table-sort p-0 fw-semibold text-dark" data-sort="order">#</button>
           </th>
           <th>
-            <button type="button" class="btn table-sort p-0 fw-semibold text-dark" data-sort="full-name">ФИО</button>
+            <button type="button" class="btn table-sort p-0 fw-semibold text-dark" data-sort="full-name">Full Name</button>
           </th>
           <th>
-            <button type="button" class="btn table-sort p-0 fw-semibold text-dark" data-sort="iin">ИИН</button>
+            <button type="button" class="btn table-sort p-0 fw-semibold text-dark" data-sort="iin">IIN</button>
           </th>
           <th>
-            <button type="button" class="btn table-sort p-0 fw-semibold text-dark" data-sort="external-id">Внешний ID</button>
+            <button type="button" class="btn table-sort p-0 fw-semibold text-dark" data-sort="external-id">External ID</button>
           </th>
           <th>PDF</th>
         </tr>
@@ -45,9 +45,9 @@
           <td class="external-id">{{ survey.external_id }}</td>
           <td>
             {% if survey.pdf_file %}
-              <a href="{{ survey.pdf_file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">Скачать</a>
+              <a href="{{ survey.pdf_file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">Download</a>
             {% else %}
-              <span class="text-muted">нет</span>
+              <span class="text-muted">n/a</span>
             {% endif %}
           </td>
         </tr>

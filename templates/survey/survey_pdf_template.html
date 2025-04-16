@@ -1,97 +1,168 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Reflection Report PDF</title>
-    <style>
-        body {
-            font-family: DejaVu Sans, sans-serif;
-            font-size: 11pt;
-            line-height: 1.6;
-            margin: 40px;
-        }
-
-        h1, h2 {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        h3 {
-            margin-top: 25px;
-            margin-bottom: 10px;
-            font-size: 13pt;
-        }
-
-        .section {
-            margin-bottom: 20px;
-        }
-
-        .question {
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .answer {
-            white-space: pre-line;
-        }
-
-        .meta {
-            margin-bottom: 30px;
-        }
-
-        .meta li {
-            list-style: none;
-            margin-bottom: 5px;
-        }
-
-        hr {
-            margin: 20px 0;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Survey Report - {{ survey.full_name }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 2cm;
+      @frame footer {
+        -pdf-frame-content: footer_content;
+        bottom: 1cm;
+        margin-left: 2cm;
+        margin-right: 2cm;
+        height: 1cm;
+      }
+    }
+    body {
+      font-family: 'Helvetica', 'Arial', sans-serif;
+      font-size: 12pt;
+      color: #333333;
+      line-height: 1.5;
+      margin: 0;
+    }
+    .header {
+      border-bottom: 3px solid #005B99;
+      padding-bottom: 15px;
+      margin-bottom: 25px;
+      text-align: center;
+    }
+    h1 {
+      font-size: 24pt;
+      color: #003087;
+      margin: 0;
+    }
+    h3 {
+      font-size: 16pt;
+      color: #004B87;
+      margin: 5px 0;
+    }
+    .section {
+      margin-bottom: 25px;
+      page-break-inside: avoid;
+    }
+    .question-title {
+      font-weight: bold;
+      font-size: 14pt;
+      color: #003087;
+      margin-bottom: 8px;
+      background: #E6F0FA;
+      padding: 8px;
+      border-radius: 4px;
+    }
+    .question-text {
+      white-space: pre-wrap;
+      border: 1px solid #DDE5ED;
+      padding: 12px;
+      background: #F9FBFD;
+      border-radius: 4px;
+      font-size: 11pt;
+      line-height: 1.6;
+    }
+    .info-table {
+      width: 100%;
+      margin-bottom: 25px;
+      border-collapse: collapse;
+    }
+    .info-table td {
+      padding: 8px 12px;
+      vertical-align: top;
+      border-bottom: 1px solid #E6E6E6;
+    }
+    .label {
+      font-weight: bold;
+      width: 25%;
+      color: #003087;
+    }
+    .signature-block {
+      font-family: 'Courier New', monospace;
+      font-size: 10pt;
+      word-break: break-word;
+      white-space: pre-wrap;
+      line-height: 1.4;
+      background-color: #F2F4F8;
+      border: 1px dashed #B0C4DE;
+      padding: 15px;
+      color: #333333;
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+    .footer {
+      text-align: center;
+      font-size: 10pt;
+      color: #666666;
+    }
+    strong {
+      color: #003087;
+    }
+  </style>
 </head>
 <body>
+  <div class="header">
+    <h1>Reflection Report</h1>
+    <h3>Submitted by: {{ survey.full_name }}</h3>
+  </div>
 
-<h1>Reflection Report</h1>
+  <table class="info-table">
+    <tr>
+      <td class="label">Full Name:</td>
+      <td>{{ survey.full_name }}</td>
+    </tr>
+    <tr>
+      <td class="label">External ID:</td>
+      <td>{{ survey.external_id }}</td>
+    </tr>
+    <tr>
+      <td class="label">Gender:</td>
+      <td>{{ survey.gender|title }}</td>
+    </tr>
+    <tr>
+      <td class="label">Age:</td>
+      <td>{{ survey.age }}</td>
+    </tr>
+    <tr>
+      <td class="label">Submitted At:</td>
+      <td>{{ survey.submitted_at|date:"Y-m-d H:i" }}</td>
+    </tr>
+  </table>
 
-<ul class="meta">
-    <li><strong>Full Name:</strong> {{ survey.full_name }}</li>
-    <li><strong>External ID:</strong> {{ survey.external_id }}</li>
-    <li><strong>Gender:</strong> {{ survey.gender|title }}</li>
-    <li><strong>Age:</strong> {{ survey.age }}</li>
-    <li><strong>Submission Date:</strong> {{ survey.submitted_at|date:"F j, Y, H:i" }}</li>
-</ul>
+  {% for i in "12345" %}
+    <div class="section">
+      <div class="question-title">
+        {{ i }}.
+        {% if i == "1" %} CBC, CBE, and CBA as a System
+        {% elif i == "2" %} Curriculum Development and Learning Goals
+        {% elif i == "3" %} Assessment Quality: Validity, Reliability, and Fairness
+        {% elif i == "4" %} Grading and Standard Setting
+        {% elif i == "5" %} Use of Rubrics
+        {% endif %}
+      </div>
+      <div class="question-text">
+        {% if i == "1" %}
+          {{ survey.answer_1 }}
+        {% elif i == "2" %}
+          {{ survey.answer_2 }}
+        {% elif i == "3" %}
+          {{ survey.answer_3 }}
+        {% elif i == "4" %}
+          {{ survey.answer_4 }}
+        {% elif i == "5" %}
+          {{ survey.answer_5 }}
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
 
-<hr>
+  <div class="section">
+    <p><strong>Digital Signature (CMS):</strong></p>
+    <div class="signature-block">
+      {{ survey.signature|default:"(not available)" }}
+    </div>
+  </div>
 
-<div class="section">
-    <h3>1. CBC, CBE, and CBA as a system</h3>
-    <div class="answer">{{ survey.answer_1|linebreaksbr }}</div>
-</div>
-
-<div class="section">
-    <h3>2. Curriculum development and learning goals</h3>
-    <div class="answer">{{ survey.answer_2|linebreaksbr }}</div>
-</div>
-
-<div class="section">
-    <h3>3. Assessment quality: validity, reliability, and fairness</h3>
-    <div class="answer">{{ survey.answer_3|linebreaksbr }}</div>
-</div>
-
-<div class="section">
-    <h3>4. Grading and standard setting</h3>
-    <div class="answer">{{ survey.answer_4|linebreaksbr }}</div>
-</div>
-
-<div class="section">
-    <h3>5. Use of rubrics</h3>
-    <div class="answer">{{ survey.answer_5|linebreaksbr }}</div>
-</div>
-
-<hr>
-
-<p><strong>Signature:</strong></p>
-<p style="font-size: 10pt; word-break: break-all;">{{ survey.signature|default:"(not available)" }}</p>
-
+  <div id="footer_content" class="footer">
+    Page <pdf:pagenumber> of <pdf:pagecount>
+  </div>
 </body>
 </html>
