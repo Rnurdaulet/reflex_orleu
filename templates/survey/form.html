@@ -158,70 +158,70 @@
             font-size: 0.875em;
         }
     </style>
+<script>
+    const fields = [1, 2, 3, 4, 5];
+    let totalWords = 0;
+    let allFieldsValid = true;
 
-    <script>
-        const fields = [1, 2, 3, 4, 5];
-        let totalWords = 0;
-        let allFieldsValid = true;
+    function countWords(text) {
+        return text.trim().split(/\s+/).filter(Boolean).length;
+    }
 
-        function countWords(text) {
-            return text.trim().split(/\s+/).filter(Boolean).length;
-        }
+    // Универсальный regex: латиница + цифры + пунктуация + пробелы
+    const LATIN_COMMON_REGEX = /^[\p{Script=Latin}\p{Script=Common}\s]*$/u;
 
-        function filterLatinField(el) {
-            const isLatin = /^[\x00-\x7F]*$/.test(el.value);
-            el.classList.toggle("is-invalid", !isLatin);
-        }
+    function filterLatinField(el) {
+        const isLatin = LATIN_COMMON_REGEX.test(el.value);
+        el.classList.toggle("is-invalid", !isLatin);
+    }
 
-        function filterLatinAndCount(el, index) {
-            const value = el.value;
-            const isLatin = /^[\x00-\x7F]*$/.test(value);
+    function filterLatinAndCount(el, index) {
+        const value = el.value;
+        const isLatin = LATIN_COMMON_REGEX.test(value);
 
-            // Предупреждение
-            const warn = document.getElementById(`latin_warn_${index}`);
-            warn.style.display = isLatin ? "none" : "block";
-            el.classList.toggle("is-invalid", !isLatin);
+        // Предупреждение
+        const warn = document.getElementById(`latin_warn_${index}`);
+        warn.style.display = isLatin ? "none" : "block";
+        el.classList.toggle("is-invalid", !isLatin);
 
-            // Слов по одному вопросу
-            const wordCount = countWords(value);
+        // Считаем слова
+        const wordCount = countWords(value);
 
-            // Обновим оба счётчика:
-            document.getElementById(`counter_form_${index}`).innerText = `Words: ${wordCount}`;
-            document.getElementById(`counter_card_${index}`).innerText = `${wordCount} words`;
+        // Обновляем счётчики по вопросу
+        document.getElementById(`counter_form_${index}`).innerText = `Words: ${wordCount}`;
+        document.getElementById(`counter_card_${index}`).innerText = `${wordCount} words`;
 
+        validateTotal();
+    }
 
-            validateTotal();
-        }
+    function validateTotal() {
+        totalWords = 0;
+        allFieldsValid = true;
 
-
-        function validateTotal() {
-            totalWords = 0;
-            allFieldsValid = true;
-
-            fields.forEach(i => {
-                const el = document.getElementById(`answer_${i}`);
-                const isLatin = /^[\x00-\x7F]*$/.test(el.value);
-                const words = countWords(el.value);
-                totalWords += words;
-                if (!isLatin) allFieldsValid = false;
-            });
-
-            const totalEl = document.getElementById("total_counter");
-            const isValidTotal = totalWords <= 1500 && allFieldsValid;
-            totalEl.innerText = `Total: ${totalWords} / max 1500 words`;
-            totalEl.classList.toggle("text-danger", !isValidTotal);
-            totalEl.classList.toggle("text-success", isValidTotal);
-            document.getElementById("submit-button").disabled = !isValidTotal;
-
-            // 🟢 Прогресс-бар
-            const progress = Math.min(100, Math.round((totalWords / 1500) * 100));
-            const progressBar = document.getElementById("progress-bar");
-            progressBar.style.width = `${progress}%`;
-            progressBar.textContent = `${progress}%`;
-        }
-
-        document.addEventListener("DOMContentLoaded", () => {
-            validateTotal();
+        fields.forEach(i => {
+            const el = document.getElementById(`answer_${i}`);
+            const isLatin = LATIN_COMMON_REGEX.test(el.value);
+            const words = countWords(el.value);
+            totalWords += words;
+            if (!isLatin) allFieldsValid = false;
         });
-    </script>
+
+        const totalEl = document.getElementById("total_counter");
+        const isValidTotal = totalWords <= 1500 && allFieldsValid;
+        totalEl.innerText = `Total: ${totalWords} / max 1500 words`;
+        totalEl.classList.toggle("text-danger", !isValidTotal);
+        totalEl.classList.toggle("text-success", isValidTotal);
+        document.getElementById("submit-button").disabled = !isValidTotal;
+
+        // 🟢 Прогресс-бар
+        const progress = Math.min(100, Math.round((totalWords / 1500) * 100));
+        const progressBar = document.getElementById("progress-bar");
+        progressBar.style.width = `${progress}%`;
+        progressBar.textContent = `${progress}%`;
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        validateTotal();
+    });
+</script>
 {% endblock %}
