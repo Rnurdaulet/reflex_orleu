@@ -41,6 +41,8 @@ class QuizPerson(models.Model):
     years_experience = models.PositiveIntegerField()
     education = models.ForeignKey(EducationLevel, on_delete=models.PROTECT, null=True, blank=True)
     region = models.ForeignKey(Region, on_delete=models.PROTECT, null=True, blank=True)
+    signature_data = models.TextField("Подпись Данные по тесту", blank=True, null=True)
+    signature = models.TextField("Подпись", blank=True, null=True)
 
     def save(self, *args, **kwargs):
         if self.person:

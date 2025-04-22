@@ -2,7 +2,6 @@ from django.contrib import admin
 from unfold.admin import ModelAdmin, TabularInline
 from .models import QuizQuestion, QuizAnswer
 
-
 class QuizAnswerInline(TabularInline):
     model = QuizAnswer
     extra = 2
