@@ -30,3 +30,38 @@ class PersonAdmin(ModelAdmin):
     @admin.display(boolean=True, description="Submitted")
     def has_submitted_survey(self, obj):
         return hasattr(obj, "surveyresponse") and obj.surveyresponse.is_submitted
+
+
+from .models import EducationLevel, Region, Person, QuizPerson
+
+
+@admin.register(EducationLevel)
+class EducationLevelAdmin(ModelAdmin):
+    list_display = ("external_id", "description")
+    search_fields = ("external_id", "description")
+    ordering = ("external_id",)
+
+
+@admin.register(Region)
+class RegionAdmin(ModelAdmin):
+    list_display = ("external_id", "description")
+    search_fields = ("external_id", "description")
+    ordering = ("external_id",)
+
+@admin.register(QuizPerson)
+class QuizPersonAdmin(ModelAdmin):
+    list_display = (
+        "external_id",
+        "person",
+        "firstname",
+        "lastname",
+        "gender",
+        "age",
+        "years_experience",
+        "education",
+        "region",
+    )
+    search_fields = ("external_id", "firstname", "lastname", "person__iin", "person__full_name")
+    list_filter = ("gender", "education", "region")
+    readonly_fields = ("external_id",)
+    autocomplete_fields = ("person", "education", "region")
