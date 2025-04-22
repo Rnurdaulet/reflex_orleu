@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Fill Your Profile{% endblock %}
+
+{% block content %}
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h3 class="mb-4">🧾 Personal Information</h3>
+
+                        <form method="post" class="needs-validation" novalidate id="quizperson-form">
+                            {% csrf_token %}
+
+
+                            <div class="row">
+                                <div class="col-6">
+
+                                </div>
+                                <div class="col-6">
+
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-6">
+                                    <!-- First Name -->
+                                    <div class="mb-3">
+                                        <label class="form-label">First Name (Latin only)</label>
+                                        <input type="text" name="firstname" id="firstname" class="form-control"
+                                               required>
+                                        <div class="invalid-feedback">
+                                            Only Latin characters allowed.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <!-- Last Name -->
+                                    <div class="mb-3">
+                                        <label class="form-label">Last Name (Latin only)</label>
+                                        <input type="text" name="lastname" id="lastname" class="form-control" required>
+                                        <div class="invalid-feedback">
+                                            Only Latin characters allowed.
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-6">
+                                    <!-- Gender -->
+                                    <div class="mb-3">
+                                        <label class="form-label">Gender</label>
+                                        <select name="gender" class="form-select" required>
+                                            <option value="" disabled selected>— Выберите пол —</option>
+                                            <option value="male">Male</option>
+                                            <option value="female">Female</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <!-- Age -->
+                                    <div class="mb-3">
+                                        <label class="form-label">Age</label>
+                                        <input type="number" name="age" class="form-control" required min="18"
+                                               max="100">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-6">
+                                    <!-- External ID (read-only) -->
+                                    <div class="mb-3">
+                                        <label class="form-label">External ID</label>
+                                        <input type="text" name="external_id"         class="form-control-plaintext bg-light text-muted"
+                                               value="{{ person.external_id }}" readonly>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <!-- Years of Experience -->
+                                    <div class="mb-3">
+                                        <label class="form-label">Years of Experience</label>
+                                        <input type="number" name="years_experience" class="form-control" required
+                                               min="0"
+                                               max="80">
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            <!-- Education -->
+                            <div class="mb-3">
+                                <label class="form-label">Education Level</label>
+                                <select name="education" class="form-select" required>
+                                    <option value="" disabled selected>— Выберите образование —</option>
+                                    {% for level in education_levels %}
+                                        <option value="{{ level.id }}">{{ level.description }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Region -->
+                            <div class="mb-3">
+                                <label class="form-label">Region</label>
+                                <select name="region" class="form-select" required>
+                                    <option value="" disabled selected>— Выберите регион —</option>
+                                    {% for region in regions %}
+                                        <option value="{{ region.id }}">{{ region.description }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Submit -->
+                            <div class="d-grid mt-4">
+                                <button type="submit" class="btn btn-primary btn-lg">Save and Continue</button>
+                            </div>
+
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const LATIN_REGEX = /^[A-Za-z\s\-']+$/;
+
+        function isLatin(value) {
+            return LATIN_REGEX.test(value);
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const form = document.getElementById("quizperson-form");
+            const firstname = document.getElementById("firstname");
+            const lastname = document.getElementById("lastname");
+
+            form.addEventListener("submit", function (event) {
+                let valid = true;
+
+                [firstname, lastname].forEach(field => {
+                    if (!isLatin(field.value.trim())) {
+                        field.classList.add("is-invalid");
+                        valid = false;
+                    } else {
+                        field.classList.remove("is-invalid");
+                    }
+                });
+
+                if (!form.checkValidity() || !valid) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+
+                form.classList.add("was-validated");
+            });
+        });
+    </script>
+{% endblock %}

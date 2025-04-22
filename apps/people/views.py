@@ -115,3 +115,38 @@ class CustomLoginView(LoginView):
             return "/survey/list"
         return "/"
 
+
+
+from django.shortcuts import render, redirect, get_object_or_404
+from .models import QuizPerson, Person, EducationLevel, Region
+from django.contrib.auth.decorators import login_required
+
+@login_required
+def fill_quizperson(request):
+    person = get_object_or_404(Person, user=request.user)
+
+    if QuizPerson.objects.filter(person=person).exists():
+        return redirect('survey_page')  # или на уже заполненное
+
+    if request.method == "POST":
+        data = request.POST
+        quiz = QuizPerson.objects.create(
+            person=person,
+            external_id=person.external_id,
+            firstname=data["firstname"],
+            lastname=data["lastname"],
+            gender=data["gender"],
+            age=data["age"],
+            years_experience=data["years_experience"],
+            education_id=data["education"],
+            region_id=data["region"],
+        )
+        return redirect("survey_page")  # Или куда дальше надо
+
+    context = {
+        "person": person,
+        "education_levels": EducationLevel.objects.all(),
+        "regions": Region.objects.all()
+    }
+    return render(request, "people/quizperson_form.html", context)
+
