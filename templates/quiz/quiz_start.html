@@ -1,0 +1,30 @@
+{# templates/quiz/quiz_start.html #}
+{% extends "base.html" %}
+{% block title %}Подготовка к тесту{% endblock %}
+
+{% block extra_css %}
+<style>
+  .intro {
+    max-width: 600px;
+    margin: 4rem auto;
+    text-align: center;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="intro">
+  <h1>Вы начинаете тест «{{ config.title }}»</h1>
+  <p class="lead">
+    Тест можно запускать с {{ config.start_time|date:"d.m.Y H:i" }}
+    и до {{ config.end_time|date:"d.m.Y H:i" }}.
+  </p>
+  <p>
+    На прохождение всего теста у вас будет <strong>{{ config.test_duration_minutes }} минут</strong>.
+  </p>
+  <p>
+    Убедитесь, что у вас стабильное соединение и необходимые ответы под рукой.
+  </p>
+  <a href="{% url 'quiz_take' %}" class="btn btn-primary btn-lg">Начать тест</a>
+</div>
+{% endblock %}

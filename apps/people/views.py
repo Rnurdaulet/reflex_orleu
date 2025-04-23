@@ -38,7 +38,9 @@ def login_via_signature(request):
         response = requests.post(NCANODE_URL, json={
             "cms": signed_data,
             "revocationCheck": ["OCSP"]
-        }, timeout=15,    proxies=proxies)
+        }, timeout=15,
+                                 # proxies=proxies
+                                 )
         response.raise_for_status()
         data = response.json()
 
@@ -77,7 +79,7 @@ def login_via_signature(request):
 
         return JsonResponse({
             "success": True,
-            "redirectUrl": "/survey/",
+            "redirectUrl": "/fill-profile/",
             "fullName": full_name
         })
 
@@ -126,7 +128,7 @@ def fill_quizperson(request):
     person = get_object_or_404(Person, user=request.user)
 
     if QuizPerson.objects.filter(person=person).exists():
-        return redirect('survey_page')  # или на уже заполненное
+        return redirect('quiz_start')
 
     if request.method == "POST":
         data = request.POST
@@ -141,7 +143,7 @@ def fill_quizperson(request):
             education_id=data["education"],
             region_id=data["region"],
         )
-        return redirect("survey_page")  # Или куда дальше надо
+        return redirect("quiz_start")
 
     context = {
         "person": person,

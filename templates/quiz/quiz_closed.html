@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Quiz Closed{% endblock %}
+
+{% block content %}
+<div class="container py-5 text-center">
+    <h2 class="text-danger mb-4"> The quiz is currently closed</h2>
+    <p class="lead">
+        <strong>Start:</strong> {{ config.start_time|date:"d.m.Y H:i" }}<br>
+        <strong>End:</strong> {{ config.end_time|date:"d.m.Y H:i" }}
+    </p>
+    <p>Please come back within the allowed time window.</p>
+</div>
+{% endblock %}

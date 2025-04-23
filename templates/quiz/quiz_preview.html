@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Preview Your Quiz{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'assets/css/atom-one-dark.min.css' %}"><!-- пример -->
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 2rem auto;
+        }
+
+        .card {
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, .075);
+        }
+
+        .lang-ru, .lang-kk, .lang-en {
+            display: none;
+        }
+
+        .lang-ru.active, .lang-kk.active, .lang-en.active {
+            display: inline;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="card-title mb-3">🔍 Preview Your Quiz</h2>
+
+                <!-- Personal Info -->
+                {% if quiz_person %}
+                    <ul class="list-group list-group-flush mb-4">
+                        <li class="list-group-item"><strong>Full
+                            Name:</strong> {{ quiz_person.firstname }} {{ quiz_person.lastname }}</li>
+                        <li class="list-group-item"><strong>Gender:</strong> {{ quiz_person.get_gender_display }}</li>
+                        <li class="list-group-item"><strong>Age:</strong> {{ quiz_person.age }}</li>
+                        <li class="list-group-item"><strong>Experience:</strong> {{ quiz_person.years_experience }}
+                            years
+                        </li>
+                    </ul>
+                {% endif %}
+
+                <hr>
+
+                <!-- Answers by Scenario -->
+                {% for block in preview %}
+                    <div class="mb-4">
+                        <h5>{{ forloop.counter }}. {{ block.scenario.name_ru }}</h5>
+                        <ul class="list-group">
+                            {% for it in block.items %}
+                                <li class="list-group-item">
+                                    <strong>{{ forloop.counter }}) </strong>{{ it.question }}<br>
+                                    <em>Your answer:</em> {{ it.answer }}
+                                    {% if it.is_correct %}
+                                        <span class="text-success">(правильно)</span>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endfor %}
+
+                <!-- Sign & Submit -->
+                <form id="sign-form" method="post" action="{% url 'quiz_sign' %}">
+                    {% csrf_token %}
+                    <button type="button" class="btn btn-success btn-lg" onclick="signQuiz()">
+                        <span class="lang-ru active">Подписать и отправить</span>
+                        <span class="lang-kk">Қол қойып жіберу</span>
+                        <span class="lang-en">Sign & Submit</span>
+                    </button>
+                </form>
+                <p class="mt-3 text-muted" id="status">Awaiting signature...</p>
+            </div>
+        </div>
+    </div>
+    <!-- Modal for messages -->
+    <div class="modal fade" id="messageModal" tabindex="-1" aria-labelledby="messageModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="messageModalLabel">Сообщение</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Ок</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'js/ncalayer-client.js' %}"></script>
+    <script>
+        function btoaUtf8(str) {
+            return btoa(unescape(encodeURIComponent(str)));
+        }
+
+        async function signQuiz() {
+            const previewText = `{{ preview_json|escapejs }}`;
+            const documentBase64 = btoaUtf8(previewText);
+            const client = new NCALayerClient();
+            try {
+                await client.connect();
+                let sig = await client.basicsSignCMS(
+                    NCALayerClient.basicsStorageAll,
+                    documentBase64,
+                    NCALayerClient.basicsCMSParamsDetached,
+                    NCALayerClient.basicsSignerSignAny
+                );
+                // Очищаем PEM-заголовки
+                if (sig.includes('-----BEGIN CMS-----')) {
+                    sig = sig
+                        .replace('-----BEGIN CMS-----', '')
+                        .replace('-----END CMS-----', '')
+                        .replace(/\r?\n|\r/g, '')
+                        .trim();
+                }
+                const form = new FormData();
+                form.append('signature', sig);
+                const resp = await fetch("{% url 'quiz_sign' %}", {
+                    method: 'POST',
+                    body: form
+                });
+                const result = await resp.json();
+
+                // Вставляем текст в модалку и показываем
+                const modalEl = document.getElementById('messageModal');
+                modalEl.querySelector('.modal-body').textContent = result.message;
+                new bootstrap.Modal(modalEl).show();
+
+                if (result.success) {
+                    // перенаправим после закрытия модалки
+                    modalEl.addEventListener('hidden.bs.modal', () => {
+                        window.location.href = "{% url 'quiz_submitted' %}";
+                    }, {once: true});
+                }
+            } catch (err) {
+                const modalEl = document.getElementById('messageModal');
+                modalEl.querySelector('.modal-body').textContent = 'Ошибка при подписании: ' + err;
+                new bootstrap.Modal(modalEl).show();
+            }
+        }
+
+    </script>
+{% endblock %}

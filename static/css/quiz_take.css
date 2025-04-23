@@ -1,0 +1,40 @@
+html {
+    scroll-padding-top: 4rem;
+}
+
+section[id] {
+    scroll-margin-top: 4rem;
+}
+
+#sidebar {
+    position: sticky;
+    top: 4rem;
+}
+
+.timer {
+    font-size: 1.25rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+
+.quiz-page {
+    display: none;
+}
+
+.quiz-page.active {
+    display: block;
+}
+
+html {
+    scroll-padding-top: 6rem;
+}
+
+/* Для секций */
+section[id] {
+    scroll-margin-top: 6rem;
+}
+
+#sidebar {
+    position: sticky;
+    top: 6rem;
+}

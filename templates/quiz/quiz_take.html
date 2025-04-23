@@ -1,0 +1,367 @@
+{% extends "base.html" %}
+{% block title %}{{ config.title }}{% endblock %}
+
+{% block extra_css %}
+    <style>
+        html {
+            scroll-padding-top: 6rem;
+        }
+
+        section[id] {
+            scroll-margin-top: 6rem;
+        }
+
+        #sidebar {
+            position: sticky;
+            top: 6rem;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .timer {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+        .quiz-page {
+            display: none;
+        }
+
+        .quiz-page.active {
+            display: block;
+        }
+
+        /* Локализация */
+        .lang-ru, .lang-kk, .lang-en {
+            display: none;
+        }
+
+        .lang-ru.active, .lang-kk.active, .lang-en.active {
+            display: inline;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <!-- Основное содержимое -->
+        <main class="col-lg-9">
+            <h1>
+                <span class="lang-ru active">{{ config.title }}</span>
+                <span class="lang-kk">{{ config.title }}</span>
+                <span class="lang-en">{{ config.title }}</span>
+            </h1>
+            <p>
+                <span class="lang-ru active">Доступно до: {{ config.display_end_time }}</span>
+                <span class="lang-kk">Қол жетімді до: {{ config.display_end_time }}</span>
+                <span class="lang-en">Available until: {{ config.display_end_time }}</span>
+            </p>
+
+            <div class="timer">
+                <span class="lang-ru active">Осталось времени:</span>
+                <span class="lang-kk">Қалған уақыт:</span>
+                <span class="lang-en">Time remaining:</span>
+                <strong id="time">--:--</strong>
+            </div>
+
+            <form id="quiz-form" method="post">
+                {% csrf_token %}
+                <div id="pages">
+                    <!-- Страница 0: Приветствие -->
+                    <div class="quiz-page active" data-step="0">
+                        <h2>
+                            <span class="lang-ru active">Добро пожаловать!</span>
+                            <span class="lang-kk">Қош келдіңіз!</span>
+                            <span class="lang-en">Welcome!</span>
+                        </h2>
+                        <p>
+                            <span class="lang-ru active">Прочитайте инструкцию перед началом:</span>
+                            <span class="lang-kk">Тесті бастамас бұрын нұсқаулықты оқыңыз:</span>
+                            <span class="lang-en">Please read the instructions before starting:</span>
+                        </p>
+                        <ul>
+                            <li>
+                                <span class="lang-ru active">Тест содержит {{ scenarios|length }} сценариев.</span>
+                                <span class="lang-kk">{{ scenarios|length }} сценарийден тұрады.</span>
+                                <span class="lang-en">The test has {{ scenarios|length }} scenarios.</span>
+                            </li>
+                            <li>
+                                <span class="lang-ru active">На каждый сценарий — до {{ config.test_duration_minutes }} мин.</span>
+                                <span class="lang-kk">Әр сценарийге {{ config.test_duration_minutes }} мин беріледі.</span>
+                                <span class="lang-en">You have up to {{ config.test_duration_minutes }} minutes per scenario.</span>
+                            </li>
+                            <li>
+                                <span class="lang-ru active">Навигация — через боковую панель.</span>
+                                <span class="lang-kk">Навигация — сол жақ панель арқылы.</span>
+                                <span class="lang-en">Use the sidebar to navigate.</span>
+                            </li>
+                        </ul>
+                        <button type="button" class="btn btn-primary" id="start-btn">
+                            <span class="lang-ru active">Начать тест</span>
+                            <span class="lang-kk">Тесті бастау</span>
+                            <span class="lang-en">Start Test</span>
+                        </button>
+                    </div>
+
+                    <!-- По одному сценарию на страницу -->
+                    {% for scenario in scenarios %}
+                        <div class="quiz-page" data-step="{{ forloop.counter }}">
+                            <h3>
+                                <span class="lang-ru active">{{ scenario.name_ru }}</span>
+                                <span class="lang-kk">{{ scenario.name_kk }}</span>
+                                <span class="lang-en">{{ scenario.name_en }}</span>
+                            </h3>
+                            <p class="fst-italic">
+                                <span class="lang-ru active">{{ scenario.situation_ru }}</span>
+                                <span class="lang-kk">{{ scenario.situation_kk }}</span>
+                                <span class="lang-en">{{ scenario.situation_en }}</span>
+                            </p>
+
+                            {% for q in scenario.questions.all %}
+                                <div class="mb-3">
+                                    <h5>
+                                        {{ forloop.parentloop.counter }}.{{ forloop.counter }}
+                                        <span class="lang-ru active">{{ q.name_ru }}</span>
+                                        <span class="lang-kk">{{ q.name_kk }}</span>
+                                        <span class="lang-en">{{ q.name_en }}</span>
+                                    </h5>
+                                    {% for a in q.answers.all %}
+                                        <div class="form-check">
+                                            <input class="form-check-input"
+                                                   type="radio"
+                                                   name="question_{{ q.id }}"
+                                                   id="q{{ q.id }}a{{ forloop.counter }}"
+                                                   value="{{ a.id }}"
+                                                   data-scenario-id="{{ scenario.id }}">
+                                            <label class="form-check-label" for="q{{ q.id }}a{{ forloop.counter }}">
+                                                <span class="lang-ru active">{{ a.name_ru }}</span>
+                                                <span class="lang-kk">{{ a.name_kk }}</span>
+                                                <span class="lang-en">{{ a.name_en }}</span>
+                                            </label>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+
+                            <div class="d-flex justify-content-between">
+                                {% if not forloop.first %}
+                                    <button type="button" class="btn btn-secondary prev-btn">
+                                        <span class="lang-ru active">Назад</span>
+                                        <span class="lang-kk">Артқа</span>
+                                        <span class="lang-en">Back</span>
+                                    </button>
+                                {% else %}<span></span>{% endif %}
+                                {% if not forloop.last %}
+                                    <button type="button" class="btn btn-primary next-btn">
+                                        <span class="lang-ru active">Далее</span>
+                                        <span class="lang-kk">Келесі</span>
+                                        <span class="lang-en">Next</span>
+                                    </button>
+                                {% else %}
+                                    <button type="button"
+                                            class="btn btn-success"
+                                            id="open-confirmation-modal">
+                                        <span class="lang-ru active">Отправить</span>
+                                        <span class="lang-kk">Жіберу</span>
+                                        <span class="lang-en">Submit</span>
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </form>
+        </main>
+
+        <!-- Боковая панель -->
+        <aside class="col-lg-3 mb-4">
+            <!-- Language dropdown -->
+            <div class="dropdown mb-3">
+                <button class="btn btn-secondary dropdown-toggle" type="button"
+                        id="langDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    RU
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="langDropdown">
+                    <li><a class="dropdown-item lang-switch active" data-lang="ru" href="#">RU</a></li>
+                    <li><a class="dropdown-item lang-switch" data-lang="kk" href="#">KK</a></li>
+                    <li><a class="dropdown-item lang-switch" data-lang="en" href="#">EN</a></li>
+                </ul>
+            </div>
+
+            <!-- Инфо о пользователе -->
+            {% if quiz_person %}
+                <div class="mb-3 small">
+                    <strong>{{ quiz_person.firstname }} {{ quiz_person.lastname }}</strong><br>
+                    {{ quiz_person.get_gender_display }} | {{ quiz_person.age }} л. | {{ quiz_person.years_experience }}
+                    лет опыта
+                    {% if quiz_person.education %}| {{ quiz_person.education }}{% endif %}
+                    {% if quiz_person.region %}| {{ quiz_person.region }}{% endif %}
+                </div>
+            {% endif %}
+
+            <nav id="sidebar" class="list-group">
+                <a href="#" class="list-group-item list-group-item-action" data-step="0">Приветствие</a>
+                {% for scenario in scenarios %}
+                    <a href="#" class="list-group-item list-group-item-action" data-step="{{ forloop.counter }}">
+                        <span class="lang-ru active">{{ scenario.name_ru }}</span>
+                        <span class="lang-kk">{{ scenario.name_kk }}</span>
+                        <span class="lang-en">{{ scenario.name_en }}</span>
+                        <div class="progress mt-1">
+                            <div class="progress-bar"
+                                 role="progressbar"
+                                 id="progress-bar-{{ scenario.id }}"
+                                 data-scenario-id="{{ scenario.id }}"
+                                 data-total="{{ scenario.questions.count }}"
+                                 style="width:0%">
+                                0/{{ scenario.questions.count }}
+                            </div>
+                        </div>
+                    </a>
+                {% endfor %}
+            </nav>
+        </aside>
+    </div>
+    <div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmationModalLabel">
+                        <span class="lang-ru active">Подтвердите отправку</span>
+                        <span class="lang-kk">Жіберуді растаңыз</span>
+                        <span class="lang-en">Confirm Submission</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>
+                        <span class="lang-ru active">Вы уверены, что хотите сдать тест? После отправки вы не сможете изменить ответы.</span>
+                        <span class="lang-kk">Сынақ тапсырмасын жібергіңіз келетіндігіңізге сенімдісіз бе? Жібергеннен кейін жауаптарды өзгерту мүмкін емес.</span>
+                        <span class="lang-en">Are you sure you want to submit the test? You won’t be able to change answers afterwards.</span>
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-bs-dismiss="modal">
+                        <span class="lang-ru active">Отмена</span>
+                        <span class="lang-kk">Бас тарту</span>
+                        <span class="lang-en">Cancel</span>
+                    </button>
+                    <button type="button"
+                            class="btn btn-primary"
+                            id="confirm-submit">
+                        <span class="lang-ru active">Да, отправить</span>
+                        <span class="lang-kk">Иә, жіберу</span>
+                        <span class="lang-en">Yes, submit</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+
+            // по клику — открываем модалку
+            document.getElementById('open-confirmation-modal')
+                .addEventListener('click', function () {
+                    var modal = new bootstrap.Modal(
+                        document.getElementById('confirmationModal')
+                    );
+                    modal.show();
+                });
+
+            // по подтверждению — сабмитим форму
+            document.getElementById('confirm-submit')
+                .addEventListener('click', function () {
+                    document.getElementById('quiz-form').submit();
+                });
+            // Сбрасываем hash
+            if (location.hash) {
+                history.replaceState(null, '', location.pathname + '#0');
+                window.scrollTo(0, 0);
+            }
+
+            // Таймер
+            let remaining = {{ remaining_seconds }},
+                disp = document.getElementById('time');
+
+            function fmt(t) {
+                let m = Math.floor(t / 60), s = t % 60;
+                return m + ':' + (s < 10 ? '0' + s : s);
+            }
+
+            disp.textContent = fmt(remaining);
+            setInterval(function () {
+                if (--remaining <= 0) document.getElementById('quiz-form').submit();
+                else disp.textContent = fmt(remaining);
+            }, 1000);
+
+            // Пагинация
+            const pages = Array.from(document.querySelectorAll('.quiz-page'));
+            let current = 0;
+
+            function showPage(i) {
+                if (i < 0 || i >= pages.length) return;
+                pages[current].classList.remove('active');
+                pages[i].classList.add('active');
+                current = i;
+            }
+
+            document.getElementById('start-btn').addEventListener('click', () => showPage(1));
+            document.querySelectorAll('.next-btn').forEach(btn =>
+                btn.addEventListener('click', () => showPage(current + 1))
+            );
+            document.querySelectorAll('.prev-btn').forEach(btn =>
+                btn.addEventListener('click', () => showPage(current - 1))
+            );
+            document.querySelectorAll('#sidebar .list-group-item').forEach(link => {
+                link.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const step = parseInt(this.dataset.step, 10);
+                    if (!isNaN(step)) showPage(step);
+                });
+            });
+
+            // Прогресс
+            const bars = {};
+            document.querySelectorAll('.progress-bar[data-scenario-id]').forEach(el => {
+                bars[el.dataset.scenarioId] = {bar: el, total: +el.dataset.total};
+            });
+            document.querySelectorAll('input[type=radio][data-scenario-id]').forEach(radio => {
+                radio.addEventListener('change', e => {
+                    const sid = e.target.dataset.scenarioId;
+                    const answered = document.querySelectorAll(
+                        `input[type=radio][data-scenario-id="${sid}"]:checked`
+                    ).length;
+                    const obj = bars[sid];
+                    const pct = obj.total ? Math.round(answered / obj.total * 100) : 0;
+                    obj.bar.style.width = pct + '%';
+                    obj.bar.setAttribute('aria-valuenow', pct);
+                    obj.bar.textContent = answered + '/' + obj.total;
+                });
+            });
+
+            // Переключение языка
+            document.querySelectorAll('.lang-switch').forEach(a => {
+                a.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const lang = this.dataset.lang;
+                    // Обновляем dropdown label
+                    document.getElementById('langDropdown').textContent = this.textContent;
+                    // Активный пункт
+                    document.querySelectorAll('.lang-switch').forEach(x => x.classList.remove('active'));
+                    this.classList.add('active');
+                    // Показываем/скрываем спаны
+                    ['ru', 'kk', 'en'].forEach(l => {
+                        document.querySelectorAll('.lang-' + l).forEach(el => {
+                            el.classList.toggle('active', l === lang);
+                        });
+                    });
+                });
+            });
+        });
+    </script>
+{% endblock %}
