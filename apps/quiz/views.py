@@ -199,7 +199,7 @@ def finalize_signed_quiz(request):
                 "detached": True
             },
             timeout=30,
-            # proxies=proxies
+             proxies=proxies
         )
         resp.raise_for_status()
         result = resp.json()

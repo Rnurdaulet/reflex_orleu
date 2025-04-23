@@ -39,7 +39,7 @@ def login_via_signature(request):
             "cms": signed_data,
             "revocationCheck": ["OCSP"]
         }, timeout=15,
-                                 # proxies=proxies
+                               proxies=proxies
                                  )
         response.raise_for_status()
         data = response.json()
