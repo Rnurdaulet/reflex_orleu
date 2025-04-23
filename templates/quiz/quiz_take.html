@@ -382,6 +382,9 @@
             'use strict';
 
             const LOG_KEY = 'quizViolationsLog';  // ключ в localStorage
+            if (localStorage.getItem('quizViolationsLog')) {
+                localStorage.removeItem('quizViolationsLog');
+            }
             let logs = loadLogs();                // текущий массив логов
 
             // --- Утилиты для работы с localStorage ---
@@ -433,16 +436,11 @@
             // 2) Клавиши: копирование, DevTools, просмотр источников
             document.addEventListener('keydown', e => {
                 const k = e.key;
-                const mod = e.ctrlKey || e.metaKey;
                 const forbidden = k === 'F12'
-                    || (mod && e.shiftKey && /[IJC]/i.test(k))
-                    || (mod && /^[UuCc]$/.test(k));
-
                 if (forbidden) {
                     e.preventDefault();
-                    showViolation('Копирование и DevTools запрещены');
-                }
-            });
+                    showViolation('DevTools запрещены');
+                }});
 
             // 3) Смена вкладки
             document.addEventListener('visibilitychange', () => {
