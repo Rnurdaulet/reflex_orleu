@@ -1,3 +1,4 @@
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.views.decorators.csrf import csrf_exempt
@@ -118,7 +119,7 @@ def finalize_signed_survey(request):
     except Exception as e:
         return JsonResponse({"success": False, "message": str(e)}, status=500)
 
-
+@staff_member_required
 @login_required
 def survey_list_view(request):
     surveys = SurveyResponse.objects.filter(is_submitted=True)

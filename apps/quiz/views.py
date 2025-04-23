@@ -1,5 +1,7 @@
 from datetime import timedelta
 import csv, io, base64
+
+from django.contrib.admin.views.decorators import staff_member_required
 from openpyxl import Workbook
 import requests
 import json
@@ -229,7 +231,7 @@ def quiz_already_submitted_view(request):
 def quiz_submitted_view(request):
     return render(request, "quiz/quiz_submitted.html")
 
-
+@staff_member_required
 @login_required
 def quiz_results_view(request):
     # собираем все вопросы (для заголовков Q1…QN)

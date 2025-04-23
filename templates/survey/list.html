@@ -28,9 +28,6 @@
             <button type="button" class="btn table-sort p-0 fw-semibold text-dark" data-sort="full-name">Full Name</button>
           </th>
           <th>
-            <button type="button" class="btn table-sort p-0 fw-semibold text-dark" data-sort="iin">IIN</button>
-          </th>
-          <th>
             <button type="button" class="btn table-sort p-0 fw-semibold text-dark" data-sort="external-id">External ID</button>
           </th>
           <th>PDF</th>
@@ -41,7 +38,6 @@
         <tr>
           <th class="order" scope="row">{{ forloop.counter }}</th>
           <td class="full-name">{{ survey.full_name }}</td>
-          <td class="iin">{{ survey.person.iin }}</td>
           <td class="external-id">{{ survey.external_id }}</td>
           <td>
             {% if survey.pdf_file %}
