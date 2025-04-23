@@ -54,9 +54,6 @@
                                 <li class="list-group-item">
                                     <strong>{{ forloop.counter }}) </strong>{{ it.question }}<br>
                                     <em>Your answer:</em> {{ it.answer }}
-                                    {% if it.is_correct %}
-                                        <span class="text-success">(правильно)</span>
-                                    {% endif %}
                                 </li>
                             {% endfor %}
                         </ul>

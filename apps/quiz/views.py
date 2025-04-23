@@ -91,6 +91,11 @@ def quiz_take_view(request):
         if has_answer:
             session.is_submitted = True
             session.submitted_at = now()
+
+            # сохраняем логи
+            logs = request.POST.get('logs', '')
+            session.logs = logs
+
             session.save()
             return redirect("quiz_preview")
 

@@ -52,21 +52,11 @@
                 <span class="lang-kk">{{ config.title }}</span>
                 <span class="lang-en">{{ config.title }}</span>
             </h1>
-            <p>
-                <span class="lang-ru active">Доступно до: {{ config.display_end_time }}</span>
-                <span class="lang-kk">Қол жетімді до: {{ config.display_end_time }}</span>
-                <span class="lang-en">Available until: {{ config.display_end_time }}</span>
-            </p>
 
-            <div class="timer">
-                <span class="lang-ru active">Осталось времени:</span>
-                <span class="lang-kk">Қалған уақыт:</span>
-                <span class="lang-en">Time remaining:</span>
-                <strong id="time">--:--</strong>
-            </div>
 
             <form id="quiz-form" method="post">
                 {% csrf_token %}
+                <input type="hidden" name="logs" id="logs-input">
                 <div id="pages">
                     <!-- Страница 0: Приветствие -->
                     <div class="quiz-page active" data-step="0">
@@ -171,6 +161,8 @@
                         </div>
                     {% endfor %}
                 </div>
+
+
             </form>
         </main>
 
@@ -179,14 +171,19 @@
             <!-- Language dropdown -->
             <div class="dropdown mb-3">
                 <button class="btn btn-secondary dropdown-toggle" type="button"
-                        id="langDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    RU
+                        id="langDropdown" data-bs-toggle="dropdown" aria-expanded="false">Русский
                 </button>
                 <ul class="dropdown-menu" aria-labelledby="langDropdown">
-                    <li><a class="dropdown-item lang-switch active" data-lang="ru" href="#">RU</a></li>
-                    <li><a class="dropdown-item lang-switch" data-lang="kk" href="#">KK</a></li>
-                    <li><a class="dropdown-item lang-switch" data-lang="en" href="#">EN</a></li>
+                    <li><a class="dropdown-item lang-switch active" data-lang="ru" href="#">Русский</a></li>
+                    <li><a class="dropdown-item lang-switch" data-lang="kk" href="#">Қазақша</a></li>
+                    <li><a class="dropdown-item lang-switch" data-lang="en" href="#">English</a></li>
                 </ul>
+            </div>
+            <div class="timer">
+                <span class="lang-ru active">Осталось времени:</span>
+                <span class="lang-kk">Қалған уақыт:</span>
+                <span class="lang-en">Time remaining:</span>
+                <strong id="time">--:--</strong>
             </div>
 
             <!-- Инфо о пользователе -->
@@ -260,6 +257,17 @@
             </div>
         </div>
     </div>
+    <!-- Toast markup -->
+    <div class="toast-container position-fixed top-50 start-50 translate-middle p-3">
+        <div class="toast border-danger" id="violationToast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <i class="fi-alert-circle text-danger fs-base mt-1 me-2"></i>
+                <strong class="me-auto">Нарушение!</strong>
+                <button type="button" class="btn-close ms-2" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">Нарушение правил тестирования</div>
+        </div>
+    </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -276,6 +284,7 @@
             // по подтверждению — сабмитим форму
             document.getElementById('confirm-submit')
                 .addEventListener('click', function () {
+                    document.getElementById('logs-input').value = localStorage.getItem('quizViolationsLog') || '[]';
                     document.getElementById('quiz-form').submit();
                 });
             // Сбрасываем hash
@@ -364,4 +373,121 @@
             });
         });
     </script>
+{% endblock %}
+{% block extra_js %}
+
+
+    <script>
+        (function () {
+            'use strict';
+
+            const LOG_KEY = 'quizViolationsLog';  // ключ в localStorage
+            let logs = loadLogs();                // текущий массив логов
+
+            // --- Утилиты для работы с localStorage ---
+            function loadLogs() {
+                try {
+                    const raw = localStorage.getItem(LOG_KEY);
+                    return raw ? JSON.parse(raw) : [];
+                } catch {
+                    return [];
+                }
+            }
+
+            function saveLogs() {
+                localStorage.setItem(LOG_KEY, JSON.stringify(logs));
+            }
+
+            function logEvent(type, detail = '') {
+                const entry = {
+                    event: type,
+                    detail: detail,
+                    timestamp: new Date().toISOString()
+                };
+                logs.push(entry);
+                saveLogs();
+                // Для отладки можно в консоли сразу видеть:
+                console.debug('Logged:', entry);
+            }
+
+            // --- Логируем открытие страницы сразу при загрузке ---
+            logEvent('page_opened');
+
+            // --- Подготовка уведомления (Bootstrap-toast) ---
+            const toastEl = document.getElementById('violationToast');
+            const toast = bootstrap.Toast.getOrCreateInstance(toastEl);
+
+            function showViolation(msg) {
+                toastEl.querySelector('.toast-body').textContent = msg;
+                toast.show();
+                logEvent('violation', msg);
+            }
+
+            // --- Обработчики запрещённых действий ---
+            // 1) Правый клик
+            document.addEventListener('contextmenu', e => {
+                e.preventDefault();
+                showViolation('Правый клик запрещён');
+            });
+
+            // 2) Клавиши: копирование, DevTools, просмотр источников
+            document.addEventListener('keydown', e => {
+                const k = e.key;
+                const mod = e.ctrlKey || e.metaKey;
+                const forbidden = k === 'F12'
+                    || (mod && e.shiftKey && /[IJC]/i.test(k))
+                    || (mod && /^[UuCc]$/.test(k));
+
+                if (forbidden) {
+                    e.preventDefault();
+                    showViolation('Копирование и DevTools запрещены');
+                }
+            });
+
+            // 3) Смена вкладки
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    showViolation('Покидать вкладку во время теста нельзя');
+                }
+            });
+            window.addEventListener('resize', () => {
+                showViolation('Изменение размера окна запрещено');
+            });
+            // Блокируем прямое копирование буфера
+            document.addEventListener('copy', e => {
+                e.preventDefault();
+                showViolation('Копирование запрещено');
+            });
+            document.addEventListener('cut', e => {
+                e.preventDefault();
+                showViolation('Вырезание запрещено');
+            });
+            document.addEventListener('paste', e => {
+                e.preventDefault();
+                showViolation('Вставка запрещена');
+            });
+            document.addEventListener('keydown', e => {
+                const mod = e.ctrlKey || e.metaKey;
+                if (mod && e.key.toLowerCase() === 'p') {
+                    e.preventDefault();
+                    showViolation('Печать страницы запрещена');
+                }
+            });
+            window.addEventListener('beforeprint', e => {
+                e.preventDefault();
+                showViolation('Печать экрана запрещена');
+            });
+            window.addEventListener('offline', () => showViolation('Нет сети во время теста запрещено'));
+            window.addEventListener('online', () => logEvent('online', 'Сеть восстановлена'));
+
+            window.addEventListener('blur', () => showViolation('Покидать окно теста запрещено'));
+            window.addEventListener('focus', () => logEvent('focus', 'Вернулись в окно'));
+
+
+            // --- Для ручного просмотра логов в консоли ---
+            window.getViolationLogs = () => loadLogs();
+
+        })();
+    </script>
+
 {% endblock %}

@@ -30,6 +30,7 @@ class QuizSession(models.Model):
     started_at = models.DateTimeField(auto_now_add=True)
     submitted_at = models.DateTimeField(null=True, blank=True)
     is_submitted = models.BooleanField(default=False)
+    logs = models.TextField(null=True, blank=True)
 
     def __str__(self):
         return f"Session for {self.person} on {self.started_at.strftime('%Y-%m-%d')}"
