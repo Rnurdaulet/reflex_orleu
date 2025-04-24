@@ -43,7 +43,6 @@ def quiz_take_view(request):
     elapsed = now() - session.started_at
     if elapsed > timedelta(minutes=config.test_duration_minutes):
         if not session.is_submitted:
-            session.is_submitted = True
             session.submitted_at = session.started_at + timedelta(minutes=config.test_duration_minutes)
             session.save()
         return redirect("quiz_submitted")
@@ -89,9 +88,6 @@ def quiz_take_view(request):
                     has_answer = True
 
         if has_answer:
-            session.is_submitted = True
-            session.submitted_at = now()
-
             # сохраняем логи
             logs = request.POST.get('logs', '')
             session.logs = logs
