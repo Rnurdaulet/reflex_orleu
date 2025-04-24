@@ -33,31 +33,31 @@ def quiz_take_view(request):
     person = request.user.person
     quiz_person = QuizPerson.objects.filter(person=person).first()
     config = QuizConfig.objects.first()
+
+    # если тест закрыт
     if not config or not config.is_active():
         return redirect("quiz_closed")
 
+    # если уже подписан — ничего редактировать нельзя
+    if quiz_person and quiz_person.signature:
+        return redirect("quiz_submitted")
+
+    # получаем или создаём сессию
     session, created = QuizSession.objects.get_or_create(
-        person=person, defaults={"is_submitted": False}
+        person=person,
+        defaults={"is_submitted": False, "started_at": now()}
     )
 
     elapsed = now() - session.started_at
     if elapsed > timedelta(minutes=config.test_duration_minutes):
-        if not session.is_submitted:
-            session.submitted_at = session.started_at + timedelta(minutes=config.test_duration_minutes)
-            session.save()
-        return redirect("quiz_submitted")
+        return redirect("quiz_preview")  # вернём на предпросмотр
 
-    if session.is_submitted:
-        return redirect("quiz_already_submitted")
-
-    # загружаем все сценарии с вопросами и ответами
+    # загружаем сценарии и вопросы
     scenarios = Scenario.objects.prefetch_related("questions__answers").all()
 
-    # считаем прогресс
+    # прогресс
     answered_ids = set(
-        QuizResponse.objects
-        .filter(session=session)
-        .values_list("question_id", flat=True)
+        QuizResponse.objects.filter(session=session).values_list("question_id", flat=True)
     )
     scenario_progress = []
     for sc in scenarios:
@@ -71,6 +71,8 @@ def quiz_take_view(request):
             "total": total,
             "percent": percent
         })
+    responses = QuizResponse.objects.filter(session=session)
+    selected_answers = {r.question_id: r.answer_id for r in responses if r.answer_id}
 
     if request.method == "POST":
         has_answer = False
@@ -79,19 +81,22 @@ def quiz_take_view(request):
                 aid = request.POST.get(f"question_{q.id}")
                 if aid:
                     ans = QuizAnswer.objects.filter(id=aid).first()
-                    QuizResponse.objects.create(
-                        session=session,
-                        question=q,
-                        answer=ans,
-                        is_correct=ans.is_correct if ans else False
-                    )
+                    existing = QuizResponse.objects.filter(session=session, question=q).first()
+                    if existing:
+                        existing.answer = ans
+                        existing.is_correct = ans.is_correct if ans else False
+                        existing.save()
+                    else:
+                        QuizResponse.objects.create(
+                            session=session,
+                            question=q,
+                            answer=ans,
+                            is_correct=ans.is_correct if ans else False
+                        )
                     has_answer = True
 
         if has_answer:
-            # сохраняем логи
-            logs = request.POST.get('logs', '')
-            session.logs = logs
-
+            session.logs = request.POST.get('logs', '')
             session.save()
             return redirect("quiz_preview")
 
@@ -101,7 +106,8 @@ def quiz_take_view(request):
             "scenario_progress": scenario_progress,
             "error": "Пожалуйста, ответьте хотя бы на один вопрос перед отправкой.",
             "remaining_seconds": max(0, int(config.test_duration_minutes * 60 - elapsed.total_seconds())),
-            "quiz_person": quiz_person
+            "quiz_person": quiz_person,
+            "selected_answers": selected_answers
         })
 
     return render(request, "quiz/quiz_take.html", {
@@ -109,22 +115,37 @@ def quiz_take_view(request):
         "scenarios": scenarios,
         "scenario_progress": scenario_progress,
         "remaining_seconds": max(0, int(config.test_duration_minutes * 60 - elapsed.total_seconds())),
-        "quiz_person": quiz_person
+        "quiz_person": quiz_person,
+        "selected_answers": selected_answers
     })
 
 
 @login_required
 def quiz_preview_view(request):
     person = request.user.person
-    session = get_object_or_404(QuizSession, person=person, is_submitted=True)
-    config = QuizConfig.objects.first()
     quiz_person = QuizPerson.objects.filter(person=person).first()
+    session = get_object_or_404(QuizSession, person=person)
+    config = QuizConfig.objects.first()
+
+    # 1. Уже подписано → редиректим
+    if quiz_person and quiz_person.signature:
+        return redirect("quiz_submitted")
+
+    # 2. Если нет ни одного ответа — редиректим обратно
+    if not QuizResponse.objects.filter(session=session).exists():
+        return redirect("quiz_closed")
+
+    # 3. Рассчитываем оставшееся время
+    elapsed = now() - session.started_at
+    remaining_seconds = max(0, int(config.test_duration_minutes * 60 - elapsed.total_seconds()))
+
+    # 4. Собираем сценарии, вопросы и ответы
     scenarios = Scenario.objects.prefetch_related("questions__answers").all()
     responses = QuizResponse.objects.filter(session=session).select_related("question", "answer")
 
-    # Собираем для отображения и для подписи
     preview = []
     preview_data = []
+
     for sc in scenarios:
         items = []
         for q in sc.questions.all():
@@ -136,8 +157,15 @@ def quiz_preview_view(request):
                 "answer": answer_text,
                 "is_correct": resp.is_correct if resp else False
             })
-        preview.append({"scenario": sc, "items": items})
-        preview_data.append({"scenario_id": sc.id, "scenario": sc.name_ru, "items": items})
+        preview.append({
+            "scenario": sc,
+            "items": items
+        })
+        preview_data.append({
+            "scenario_id": sc.id,
+            "scenario": sc.name_ru,
+            "items": items
+        })
 
     preview_json = json.dumps(preview_data, ensure_ascii=False)
 
@@ -145,7 +173,9 @@ def quiz_preview_view(request):
         "config": config,
         "quiz_person": quiz_person,
         "preview": preview,
-        "preview_json": preview_json
+        "preview_json": preview_json,
+        "remaining_seconds": remaining_seconds,
+        "allow_submit": True
     })
 
 
@@ -195,7 +225,7 @@ def finalize_signed_quiz(request):
                 "detached": True
             },
             timeout=30,
-             proxies=proxies
+            proxies=proxies
         )
         resp.raise_for_status()
         result = resp.json()
@@ -232,6 +262,7 @@ def quiz_already_submitted_view(request):
 def quiz_submitted_view(request):
     return render(request, "quiz/quiz_submitted.html")
 
+
 @staff_member_required
 @login_required
 def quiz_results_view(request):
@@ -250,13 +281,13 @@ def quiz_results_view(request):
         qp = getattr(sess.person, 'quizperson', None)
         # личные поля
         ext_id = qp.external_id if qp else ""
-        fn     = qp.firstname       if qp else ""
-        ln     = qp.lastname        if qp else ""
-        gender = qp.gender          if qp else ""
-        age    = qp.age             if qp else ""
-        exp    = qp.years_experience if qp else ""
-        edu    = qp.education_id    if qp else ""
-        reg    = qp.region_id       if qp else ""
+        fn = qp.firstname if qp else ""
+        ln = qp.lastname if qp else ""
+        gender = qp.gender if qp else ""
+        age = qp.age if qp else ""
+        exp = qp.years_experience if qp else ""
+        edu = qp.education_id if qp else ""
+        reg = qp.region_id if qp else ""
         # ответы: {question_id: external_id}
         resp_map = {
             r.question_id: (r.answer.external_id if r.answer else "")
@@ -265,20 +296,20 @@ def quiz_results_view(request):
         answers = [resp_map.get(q.id, "") for q in questions]
 
         rows.append({
-            'external_id':        ext_id,
-            'firstname':          fn,
-            'lastname':           ln,
-            'gender':             gender,
-            'age':                age,
-            'years_experience':   exp,
-            'education':          edu,
-            'region':             reg,
-            'answers':            answers,
+            'external_id': ext_id,
+            'firstname': fn,
+            'lastname': ln,
+            'gender': gender,
+            'age': age,
+            'years_experience': exp,
+            'education': edu,
+            'region': reg,
+            'answers': answers,
         })
 
     return render(request, "quiz/quiz_results.html", {
         "questions": questions,
-        "rows":      rows,
+        "rows": rows,
     })
 
 
@@ -297,22 +328,22 @@ def export_results_csv(request):
     writer = csv.writer(response)
     # заголовок
     header = [
-        "Id", "First name", "Last name",
-        "Gender", "Age", "YearsExperience",
-        "Education", "Region"
-    ] + [f"Q{i+1}" for i in range(len(questions))]
+                 "Id", "First name", "Last name",
+                 "Gender", "Age", "YearsExperience",
+                 "Education", "Region"
+             ] + [f"Q{i + 1}" for i in range(len(questions))]
     writer.writerow(header)
 
     for sess in sessions:
         qp = getattr(sess.person, 'quizperson', None)
         ext_id = qp.external_id if qp else ""
-        fn     = qp.firstname       if qp else ""
-        ln     = qp.lastname        if qp else ""
-        gender = qp.gender          if qp else ""
-        age    = qp.age             if qp else ""
-        exp    = qp.years_experience if qp else ""
-        edu    = qp.education_id    if qp else ""
-        reg    = qp.region_id       if qp else ""
+        fn = qp.firstname if qp else ""
+        ln = qp.lastname if qp else ""
+        gender = qp.gender if qp else ""
+        age = qp.age if qp else ""
+        exp = qp.years_experience if qp else ""
+        edu = qp.education_id if qp else ""
+        reg = qp.region_id if qp else ""
         resp_map = {
             r.question_id: (r.answer.external_id if r.answer else "")
             for r in sess.responses.all()
@@ -339,21 +370,21 @@ def export_results_excel(request):
     ws = wb.active
     # заголовок
     ws.append([
-        "Id", "First name", "Last name",
-        "Gender", "Age", "YearsExperience",
-        "Education", "Region"
-    ] + [f"Q{i+1}" for i in range(len(questions))])
+                  "Id", "First name", "Last name",
+                  "Gender", "Age", "YearsExperience",
+                  "Education", "Region"
+              ] + [f"Q{i + 1}" for i in range(len(questions))])
 
     for sess in sessions:
         qp = getattr(sess.person, 'quizperson', None)
         ext_id = qp.external_id if qp else ""
-        fn     = qp.firstname       if qp else ""
-        ln     = qp.lastname        if qp else ""
-        gender = qp.gender          if qp else ""
-        age    = qp.age             if qp else ""
-        exp    = qp.years_experience if qp else ""
-        edu    = qp.education_id    if qp else ""
-        reg    = qp.region_id       if qp else ""
+        fn = qp.firstname if qp else ""
+        ln = qp.lastname if qp else ""
+        gender = qp.gender if qp else ""
+        age = qp.age if qp else ""
+        exp = qp.years_experience if qp else ""
+        edu = qp.education_id if qp else ""
+        reg = qp.region_id if qp else ""
         resp_map = {
             r.question_id: (r.answer.external_id if r.answer else "")
             for r in sess.responses.all()

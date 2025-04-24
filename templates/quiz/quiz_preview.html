@@ -60,16 +60,54 @@
                     </div>
                 {% endfor %}
 
-                <!-- Sign & Submit -->
-                <form id="sign-form" method="post" action="{% url 'quiz_sign' %}">
-                    {% csrf_token %}
-                    <button type="button" class="btn btn-success btn-lg" onclick="signQuiz()">
-                        <span class="lang-ru active">Подписать и отправить</span>
-                        <span class="lang-kk">Қол қойып жіберу</span>
-                        <span class="lang-en">Sign & Submit</span>
-                    </button>
-                </form>
-                <p class="mt-3 text-muted" id="status">Awaiting signature...</p>
+
+                {% if remaining_seconds %}
+                    <div class="alert alert-info">
+                        Осталось времени: <span id="time-remaining">{{ remaining_seconds }}</span> сек.
+                    </div>
+                    <script>
+                        (function () {
+                            let remaining = parseInt(document.getElementById('time-remaining').textContent, 10);
+                            const el = document.getElementById('time-remaining');
+
+                            function update() {
+                                if (remaining > 0) {
+                                    remaining -= 1;
+                                    el.textContent = remaining;
+                                    setTimeout(update, 1000);
+                                }
+                            }
+
+                            update();
+                        })();
+                    </script>
+                {% endif %}
+
+                {% if not quiz_person.signature %}
+                    <!-- Sign & Submit -->
+                    <form id="sign-form" method="post" action="{% url 'quiz_sign' %}">
+                        {% csrf_token %}
+                        <button type="button" class="btn btn-success btn-lg" onclick="signQuiz()">
+                            <span class="lang-ru active">Подписать и отправить</span>
+                            <span class="lang-kk">Қол қойып жіберу</span>
+                            <span class="lang-en">Sign & Submit</span>
+                        </button>
+                    </form>
+                    <p class="mt-3 text-muted" id="status">Awaiting signature...</p>
+
+                        {% if remaining_seconds == 0 %}
+                            <div class="alert alert-warning">
+                                Время вышло. Вы не можете изменить свои ответы, только подписать.
+                            </div>
+                        {% else %}
+                            <a href="{% url 'quiz_take' %}" class="btn btn-warning">Вернуться и изменить</a>
+                        {% endif %}
+
+
+                {% else %}
+                    <div class="alert alert-success">Ответы уже подписаны. Изменения невозможны.</div>
+                {% endif %}
+
             </div>
         </div>
     </div>

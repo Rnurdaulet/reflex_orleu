@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ config.title }}{% endblock %}
+{% load dict_filters %}
 
 {% block extra_css %}
     <style>
@@ -123,7 +124,10 @@
                                                    name="question_{{ q.id }}"
                                                    id="q{{ q.id }}a{{ forloop.counter }}"
                                                    value="{{ a.id }}"
-                                                   data-scenario-id="{{ scenario.id }}">
+                                                   data-scenario-id="{{ scenario.id }}"
+                                                   {% if selected_answers|get_item:q.id == a.id %}checked{% endif %}>
+
+
                                             <label class="form-check-label" for="q{{ q.id }}a{{ forloop.counter }}">
                                                 <span class="lang-ru active">{{ a.name_ru }}</span>
                                                 <span class="lang-kk">{{ a.name_kk }}</span>
@@ -268,8 +272,120 @@
             <div class="toast-body">Нарушение правил тестирования</div>
         </div>
     </div>
+{% endblock %}
+{% block extra_js %}
+
 
     <script>
+        (function () {
+            'use strict';
+
+            const LOG_KEY = 'quizViolationsLog';  // ключ в localStorage
+            if (localStorage.getItem('quizViolationsLog')) {
+                localStorage.removeItem('quizViolationsLog');
+            }
+            let logs = loadLogs();                // текущий массив логов
+
+            // --- Утилиты для работы с localStorage ---
+            function loadLogs() {
+                try {
+                    const raw = localStorage.getItem(LOG_KEY);
+                    return raw ? JSON.parse(raw) : [];
+                } catch {
+                    return [];
+                }
+            }
+
+            function saveLogs() {
+                localStorage.setItem(LOG_KEY, JSON.stringify(logs));
+            }
+
+            window.logEvent = function (type, detail = '') {
+                const entry = {
+                    event: type,
+                    detail: detail,
+                    timestamp: new Date().toISOString()
+                };
+                logs.push(entry);
+                saveLogs();
+                console.debug('Logged:', entry);
+            };
+
+            // --- Логируем открытие страницы сразу при загрузке ---
+            logEvent('page_opened');
+
+            // --- Подготовка уведомления (Bootstrap-toast) ---
+            const toastEl = document.getElementById('violationToast');
+            const toast = bootstrap.Toast.getOrCreateInstance(toastEl);
+
+            window.showViolation = function (msg) {
+                toastEl.querySelector('.toast-body').textContent = msg;
+                toast.show();
+                logEvent('violation', msg);
+            };
+
+
+            // --- Обработчики запрещённых действий ---
+            // 1) Правый клик
+            document.addEventListener('contextmenu', e => {
+                e.preventDefault();
+                showViolation('Правый клик запрещён');
+            });
+
+            // 2) Клавиши: копирование, DevTools, просмотр источников
+            {#document.addEventListener('keydown', e => {#}
+            {#    const k = e.key;#}
+            {#    const forbidden = k === 'F12'#}
+            {#    if (forbidden) {#}
+            {#        e.preventDefault();#}
+            {#        showViolation('DevTools запрещены');#}
+            {#    }});#}
+
+            // 3) Смена вкладки
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    showViolation('Покидать вкладку во время теста нельзя');
+                }
+            });
+            window.addEventListener('resize', () => {
+                showViolation('Изменение размера окна запрещено');
+            });
+            // Блокируем прямое копирование буфера
+            document.addEventListener('copy', e => {
+                e.preventDefault();
+                showViolation('Копирование запрещено');
+            });
+            document.addEventListener('cut', e => {
+                e.preventDefault();
+                showViolation('Вырезание запрещено');
+            });
+            document.addEventListener('paste', e => {
+                e.preventDefault();
+                showViolation('Вставка запрещена');
+            });
+            document.addEventListener('keydown', e => {
+                const mod = e.ctrlKey || e.metaKey;
+                if (mod && e.key.toLowerCase() === 'p') {
+                    e.preventDefault();
+                    showViolation('Печать страницы запрещена');
+                }
+            });
+            window.addEventListener('beforeprint', e => {
+                e.preventDefault();
+                showViolation('Печать экрана запрещена');
+            });
+            window.addEventListener('offline', () => showViolation('Нет сети во время теста запрещено'));
+            window.addEventListener('online', () => logEvent('online', 'Сеть восстановлена'));
+
+            window.addEventListener('blur', () => showViolation('Покидать окно теста запрещено'));
+            window.addEventListener('focus', () => logEvent('focus', 'Вернулись в окно'));
+
+
+            // --- Для ручного просмотра логов в консоли ---
+            window.getViolationLogs = () => loadLogs();
+
+        })();
+
         document.addEventListener('DOMContentLoaded', function () {
 
             // по клику — открываем модалку
@@ -304,8 +420,15 @@
 
             disp.textContent = fmt(remaining);
             setInterval(function () {
-                if (--remaining <= 0) document.getElementById('quiz-form').submit();
-                else disp.textContent = fmt(remaining);
+                if (--remaining <= 15) {
+                    logEvent('auto_submit_10s_left', 'Автоматическая отправка за 15 секунд до окончания');
+                    showViolation('До окончания осталось 15 секунд. Ответы отправляются автоматически.');
+                    // Добавим логи и отправим
+                    setTimeout(() => {
+                        document.getElementById('logs-input').value = localStorage.getItem('quizViolationsLog') || '[]';
+                        document.getElementById('quiz-form').submit();
+                    }, 1500); // чуть подождём, чтобы показать тост
+                } else disp.textContent = fmt(remaining);
             }, 1000);
 
             // Пагинация
@@ -373,119 +496,4 @@
             });
         });
     </script>
-{% endblock %}
-{% block extra_js %}
-
-
-    <script>
-        (function () {
-            'use strict';
-
-            const LOG_KEY = 'quizViolationsLog';  // ключ в localStorage
-            if (localStorage.getItem('quizViolationsLog')) {
-                localStorage.removeItem('quizViolationsLog');
-            }
-            let logs = loadLogs();                // текущий массив логов
-
-            // --- Утилиты для работы с localStorage ---
-            function loadLogs() {
-                try {
-                    const raw = localStorage.getItem(LOG_KEY);
-                    return raw ? JSON.parse(raw) : [];
-                } catch {
-                    return [];
-                }
-            }
-
-            function saveLogs() {
-                localStorage.setItem(LOG_KEY, JSON.stringify(logs));
-            }
-
-            function logEvent(type, detail = '') {
-                const entry = {
-                    event: type,
-                    detail: detail,
-                    timestamp: new Date().toISOString()
-                };
-                logs.push(entry);
-                saveLogs();
-                // Для отладки можно в консоли сразу видеть:
-                console.debug('Logged:', entry);
-            }
-
-            // --- Логируем открытие страницы сразу при загрузке ---
-            logEvent('page_opened');
-
-            // --- Подготовка уведомления (Bootstrap-toast) ---
-            const toastEl = document.getElementById('violationToast');
-            const toast = bootstrap.Toast.getOrCreateInstance(toastEl);
-
-            function showViolation(msg) {
-                toastEl.querySelector('.toast-body').textContent = msg;
-                toast.show();
-                logEvent('violation', msg);
-            }
-
-            // --- Обработчики запрещённых действий ---
-            // 1) Правый клик
-            document.addEventListener('contextmenu', e => {
-                e.preventDefault();
-                showViolation('Правый клик запрещён');
-            });
-
-            // 2) Клавиши: копирование, DevTools, просмотр источников
-            document.addEventListener('keydown', e => {
-                const k = e.key;
-                const forbidden = k === 'F12'
-                if (forbidden) {
-                    e.preventDefault();
-                    showViolation('DevTools запрещены');
-                }});
-
-            // 3) Смена вкладки
-            document.addEventListener('visibilitychange', () => {
-                if (document.hidden) {
-                    showViolation('Покидать вкладку во время теста нельзя');
-                }
-            });
-            window.addEventListener('resize', () => {
-                showViolation('Изменение размера окна запрещено');
-            });
-            // Блокируем прямое копирование буфера
-            document.addEventListener('copy', e => {
-                e.preventDefault();
-                showViolation('Копирование запрещено');
-            });
-            document.addEventListener('cut', e => {
-                e.preventDefault();
-                showViolation('Вырезание запрещено');
-            });
-            document.addEventListener('paste', e => {
-                e.preventDefault();
-                showViolation('Вставка запрещена');
-            });
-            document.addEventListener('keydown', e => {
-                const mod = e.ctrlKey || e.metaKey;
-                if (mod && e.key.toLowerCase() === 'p') {
-                    e.preventDefault();
-                    showViolation('Печать страницы запрещена');
-                }
-            });
-            window.addEventListener('beforeprint', e => {
-                e.preventDefault();
-                showViolation('Печать экрана запрещена');
-            });
-            window.addEventListener('offline', () => showViolation('Нет сети во время теста запрещено'));
-            window.addEventListener('online', () => logEvent('online', 'Сеть восстановлена'));
-
-            window.addEventListener('blur', () => showViolation('Покидать окно теста запрещено'));
-            window.addEventListener('focus', () => logEvent('focus', 'Вернулись в окно'));
-
-
-            // --- Для ручного просмотра логов в консоли ---
-            window.getViolationLogs = () => loadLogs();
-
-        })();
-    </script>
-
 {% endblock %}
