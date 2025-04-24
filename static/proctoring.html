@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Proctoring Debug</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection"></script>
+    <style>
+        video, canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 320px;
+            height: 240px;
+            transform: scaleX(-1);
+        }
+
+#log, #checklist {
+  position: absolute;
+  left: 0;
+  bottom: 60px; /* отступ от низа окна */
+  background: rgba(0,0,0,0.7);
+  color: white;
+  padding: 8px;
+  font-family: monospace;
+  font-size: 12px;
+  max-width: 320px;
+  z-index: 999;
+}
+#log{
+    top:0;
+     bottom: 220px;
+}
+
+#checklist {
+  bottom: 0;
+}
+
+    </style>
+</head>
+<body>
+<video id="video" autoplay muted playsinline width="320" height="240"></video>
+<canvas id="output" width="320" height="240"></canvas>
+<div id="log">Загрузка...</div>
+<div id="checklist">⏳ Чек-лист загружается...</div>
+
+<script>
+    function updateChecklist({faceScale, ratio, headTiltDown, multiFace}) {
+        const checks = [];
+
+        if (faceScale < 30) checks.push("Слишком далеко ❌");
+        else if (faceScale > 80) checks.push("Слишком близко ❌");
+        else checks.push(" Расстояние: ✅");
+
+        if (ratio < 0.607) checks.push("Поворот ❌");
+        else checks.push("Поворот: ✅");
+
+        if (headTiltDown > -1) checks.push("Наклон ❌");
+        else checks.push("Вертикально: ✅");
+
+        if (multiFace) checks.push("👥 Несколько лиц в кадре ❗");
+
+document.getElementById("checklist").innerHTML = checks.join("<br>");
+
+    }
+
+
+    console.clear();
+    const log = (msg) => {
+        document.getElementById('log').textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        console.log(msg);
+    };
+
+    async function setupCamera() {
+        const video = document.getElementById('video');
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({video: {width: 320, height: 240}});
+            video.srcObject = stream;
+            return new Promise(resolve => {
+                video.onloadedmetadata = () => {
+                    log("Камера инициализирована");
+                    resolve(video);
+                };
+            });
+        } catch (e) {
+            log("Ошибка доступа к камере");
+            console.error("Camera error:", e);
+            throw e;
+        }
+    }
+
+    function isBlackFrame(video, ctx) {
+        const frame = ctx.getImageData(0, 0, video.videoWidth, video.videoHeight);
+        const data = frame.data;
+        let sum = 0;
+        for (let i = 0; i < data.length; i += 4) {
+            const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+            sum += brightness;
+        }
+        const avg = sum / (data.length / 4);
+        return avg < 15;
+    }
+
+    async function run() {
+        try {
+            const video = await setupCamera();
+            await video.play();
+
+            const canvas = document.getElementById('output');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+
+            log("Инициализация TensorFlow...");
+            await tf.setBackend('webgl');
+            await tf.ready();
+            log("TensorFlow готов");
+
+            log("Загрузка модели...");
+            const detector = await faceLandmarksDetection.createDetector(
+                faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
+                {
+                    runtime: 'tfjs',
+                    maxFaces: 3,
+                    refineLandmarks: true
+                }
+            );
+            log("Модель загружена");
+
+            const detect = async () => {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                if (isBlackFrame(video, ctx)) {
+                    log("Чёрный экран");
+                    return requestAnimationFrame(detect);
+                }
+
+                const faces = await detector.estimateFaces(video);
+                let faceScale = 0;
+                let headTiltDown = 0;
+                let ratio = 1;
+
+                if (!faces.length) {
+                    log("Лицо не найдено");
+                    updateChecklist({faceScale, ratio, headTiltDown, multiFace: false});
+                    return requestAnimationFrame(detect);
+                }
+
+                if (faces.length > 1) {
+                    log(`Обнаружено несколько лиц: ${faces.length}`);
+                    updateChecklist({faceScale, ratio, headTiltDown, multiFace: true});
+                    return requestAnimationFrame(detect);
+                }
+
+
+                const face = faces[0];
+                const landmarks = face.keypoints;
+                const leftEye = landmarks.find(p => p.name === 'leftEye') || landmarks[133];
+                const rightEye = landmarks.find(p => p.name === 'rightEye') || landmarks[362];
+                const leftEar = landmarks[234];
+                const rightEar = landmarks[454];
+
+                const eyeDist = Math.abs(rightEye.x - leftEye.x);
+                faceScale = eyeDist;
+
+                const avgEyeY = (leftEye.y + rightEye.y) / 2;
+                const avgEarY = (leftEar.y + rightEar.y) / 2;
+                headTiltDown = avgEyeY - avgEarY;
+
+                const faceWidth = Math.abs(rightEar.x - leftEar.x);
+                ratio = eyeDist / faceWidth;
+                updateChecklist({faceScale, ratio, headTiltDown, multiFace: false});
+
+                log("✅ Лицо обнаружено");
+                requestAnimationFrame(detect);
+            };
+
+            detect();
+        } catch (e) {
+            log("Ошибка запуска");
+            console.error("Ошибка в run():", e);
+        }
+    }
+
+    run();
+    window.parent.postMessage({
+        type: "violation",
+        data: {reason: "no_face", duration: 3}
+    }, "*");
+
+</script>
+</body>
+</html>
