@@ -21,7 +21,7 @@
   position: absolute;
   left: 0;
   bottom: 60px; /* отступ от низа окна */
-  background: rgba(0,0,0,0.7);
+  background: rgba(0,0,0,0.3);
   color: white;
   padding: 8px;
   font-family: monospace;
@@ -31,7 +31,7 @@
 }
 #log{
     top:0;
-     bottom: 220px;
+     bottom: 210px;
 }
 
 #checklist {
@@ -41,7 +41,7 @@
     </style>
 </head>
 <body>
-<video id="video" autoplay muted playsinline width="320" height="240"></video>
+<video id="video" autoplay playsinline width="320" height="240"></video>
 <canvas id="output" width="320" height="240"></canvas>
 <div id="log">Загрузка...</div>
 <div id="checklist">⏳ Чек-лист загружается...</div>
@@ -54,7 +54,7 @@
         else if (faceScale > 80) checks.push("Слишком близко ❌");
         else checks.push(" Расстояние: ✅");
 
-        if (ratio < 0.607) checks.push("Поворот ❌");
+        if (ratio < 0.606) checks.push("Поворот ❌");
         else checks.push("Поворот: ✅");
 
         if (headTiltDown > -1) checks.push("Наклон ❌");

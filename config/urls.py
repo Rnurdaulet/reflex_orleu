@@ -25,5 +25,6 @@ urlpatterns = [
     path("", include("apps.people.urls")),
     path("", include("apps.survey.urls")),
     path("quiz/", include("apps.quiz.urls")),
+    path("", include("apps.proctoring.urls")),
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

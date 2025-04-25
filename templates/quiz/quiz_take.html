@@ -16,8 +16,9 @@
         #sidebar {
             position: sticky;
             top: 6rem;
-            max-height: 80vh;
+            max-height: 100vh;
             overflow-y: auto;
+            overflow-x: hidden;
         }
 
         .timer {
@@ -45,24 +46,72 @@
 
         iframe {
             width: 320px;
-            height: 260px;
+            height: 240px;
             border: none;
             margin-top: 1rem;
         }
     </style>
+    <style>
+        #proctorWrapper {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            width: 340px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 12px;
+            z-index: 9999;
+            font-family: monospace;
+            color: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        #proctorWrapper iframe {
+            width: 100%;
+            height: 240px;
+            border: none;
+            border-radius: 6px;
+        }
+
+        #proctorWrapper button {
+            margin-top: 5px;
+            width: 100%;
+            padding: 0px;
+            font-weight: bold;
+        }
+
+        #output {
+            display: none;
+        }
+    </style>
+
 {% endblock %}
 
 {% block content %}
     <div class="row">
         <!-- Основное содержимое -->
         <main class="col-lg-9">
-            <h1>
-                <span class="lang-ru active">{{ config.title }}</span>
-                <span class="lang-kk">{{ config.title }}</span>
-                <span class="lang-en">{{ config.title }}</span>
-            </h1>
-
-
+            <div class="d-flex justify-content-between">
+                <!-- Инфо о пользователе -->
+                {% if quiz_person %}
+                    <div class="justify-content-start align-content-center">
+                        <strong>{{ quiz_person.firstname }} {{ quiz_person.lastname }}</strong><br>
+                        {{ quiz_person.external_id }}
+                    </div>
+                {% endif %}
+                <strong class="justify-content-end align-content-center" id="time">--:--</strong>
+                <!-- Language dropdown -->
+                <div class="dropdown justify-content-end align-content-center">
+                    <button class="btn btn-secondary dropdown-toggle" type="button"
+                            id="langDropdown" data-bs-toggle="dropdown" aria-expanded="false">Русский
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="langDropdown">
+                        <li><a class="dropdown-item lang-switch active" data-lang="ru" href="#">Русский</a></li>
+                        <li><a class="dropdown-item lang-switch" data-lang="kk" href="#">Қазақша</a></li>
+                        <li><a class="dropdown-item lang-switch" data-lang="en" href="#">English</a></li>
+                    </ul>
+                </div>
+            </div>
             <form id="quiz-form" method="post">
                 {% csrf_token %}
                 <input type="hidden" name="logs" id="logs-input">
@@ -186,40 +235,15 @@
 
         <!-- Боковая панель -->
         <aside class="col-lg-3 mb-4">
-            <!-- Language dropdown -->
-            <div class="dropdown mb-3">
-                <button class="btn btn-secondary dropdown-toggle" type="button"
-                        id="langDropdown" data-bs-toggle="dropdown" aria-expanded="false">Русский
-                </button>
-                <ul class="dropdown-menu" aria-labelledby="langDropdown">
-                    <li><a class="dropdown-item lang-switch active" data-lang="ru" href="#">Русский</a></li>
-                    <li><a class="dropdown-item lang-switch" data-lang="kk" href="#">Қазақша</a></li>
-                    <li><a class="dropdown-item lang-switch" data-lang="en" href="#">English</a></li>
-                </ul>
-            </div>
-            <div class="timer">
-                <span class="lang-ru active">Осталось времени:</span>
-                <span class="lang-kk">Қалған уақыт:</span>
-                <span class="lang-en">Time remaining:</span>
-                <strong id="time">--:--</strong>
-            </div>
-
-            <!-- Инфо о пользователе -->
-            {% if quiz_person %}
-                <div class="mb-3 small">
-                    <strong>{{ quiz_person.firstname }} {{ quiz_person.lastname }}</strong><br>
-                    {{ quiz_person.get_gender_display }} | {{ quiz_person.age }} л. | {{ quiz_person.years_experience }}
-                    лет опыта
-                    {% if quiz_person.education %}| {{ quiz_person.education }}{% endif %}
-                    {% if quiz_person.region %}| {{ quiz_person.region }}{% endif %}
-                </div>
-            {% endif %}
-
             <nav id="sidebar" class="list-group">
-                        <iframe
-                    src="{% static '/proctoring.html' %}"
-                    allow="camera; microphone">
-            </iframe>
+                <div class="">
+                    <iframe
+                            id="proctorFrame"
+                            src="{% static '/proctoring.html' %}"
+                            allow="camera; microphone">
+                    </iframe>
+                    <canvas id="output" width="280" height="240"></canvas>
+                </div>
                 <a href="#" class="list-group-item list-group-item-action" data-step="0">Приветствие</a>
                 {% for scenario in scenarios %}
                     <a href="#" class="list-group-item list-group-item-action" data-step="{{ forloop.counter }}">
@@ -239,8 +263,18 @@
                     </a>
                 {% endfor %}
             </nav>
+
         </aside>
     </div>
+    {#    <div id="proctorWrapper">#}
+    {#        <iframe#}
+    {#                id="proctorFrame"#}
+    {#                src="{% static '/proctoring.html' %}"#}
+    {#                allow="camera; microphone">#}
+    {#        </iframe>#}
+    {#        <canvas id="output" width="280" height="240"></canvas>#}
+    {#    </div>#}
+
     <div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel"
          aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -351,14 +385,13 @@
             });
 
             // 2) Клавиши: копирование, DevTools, просмотр источников
-            document.addEventListener('keydown', e => {
-                const k = e.key;
-                const forbidden = k === 'F12'
-                if (forbidden) {
-                    e.preventDefault();
-                    showViolation('DevTools запрещены');
-                }
-            });
+            {#document.addEventListener('keydown', e => {#}
+            {#    const k = e.key;#}
+            {#    const forbidden = k === 'F12'#}
+            {#    if (forbidden) {#}
+            {#        e.preventDefault();#}
+            {#        showViolation('DevTools запрещены');#}
+            {#    }});#}
 
             // 3) Смена вкладки
             document.addEventListener('visibilitychange', () => {
@@ -516,12 +549,125 @@
         });
     </script>
     <script>
-        window.addEventListener("message", (event) => {
-            if (event.data?.type === "violation") {
-                console.log("Нарушение от прокторинга:", event.data.data);
-                // Можно отправить на сервер через fetch
+        let mediaRecorder, chunks = [], drawId;
+        let canvas = document.getElementById('output');
+        let ctx = canvas.getContext('2d');
+        let chunkInterval;
+        let isRecording = false;
+
+        let chunkIndex = 0;
+
+        async function uploadChunk(blob) {
+            const res = await fetch(`/api/get-presigned-url/?index=${chunkIndex}`);
+            const {url, key} = await res.json();
+
+            await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'video/webm'
+                },
+                body: blob
+            });
+
+            console.log(`☁️ Залит чанк #${chunkIndex} в ${key}`);
+            chunkIndex++;
+        }
+
+        async function startRecording() {
+            const iframe = document.getElementById('proctorFrame');
+            const iframeDoc = iframe.contentWindow.document;
+
+            const video = iframeDoc.getElementById('video');
+            const log = iframeDoc.getElementById('log');
+            const checklist = iframeDoc.getElementById('checklist');
+
+            if (!video) {
+                console.warn("⚠️ Видео внутри iframe не найдено");
+                return;
+            }
+
+            const audioStream = await navigator.mediaDevices.getUserMedia({audio: true});
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                ctx.font = "9px monospace";
+                ctx.fillStyle = "rgba(0,0,0,0.6)";
+                ctx.fillRect(0, 0, 320, 40);
+                ctx.fillStyle = "lime";
+                ctx.fillText(log?.textContent || '', 10, 15);
+
+                ctx.fillStyle = "yellow";
+                const lines = (checklist?.textContent || '').split("<br>");
+                lines.forEach((line, i) => {
+                    ctx.fillText(line, 10, 30 + i * 15);
+                });
+
+                drawId = requestAnimationFrame(draw);
+            }
+
+            draw();
+
+            const videoStream = canvas.captureStream(10);
+            const combinedStream = new MediaStream([
+                ...videoStream.getVideoTracks(),
+                ...audioStream.getAudioTracks()
+            ]);
+
+            mediaRecorder = new MediaRecorder(combinedStream, {mimeType: 'video/webm'});
+
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) {
+                    console.log(`💾 Чанк #${chunkIndex} → ${Math.round(e.data.size / 1024)} KB`);
+                    uploadChunk(e.data).catch(err => {
+                        console.error("❌ Ошибка загрузки чанка:", err);
+                    });
+                }
+
+            };
+
+            mediaRecorder.onstop = () => {
+                cancelAnimationFrame(drawId);
+                clearInterval(chunkInterval);
+                isRecording = false;
+                console.log("🛑 Запись остановлена");
+
+                if (chunks.length > 0) {
+                    const blob = new Blob(chunks, {type: 'video/webm'});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `recording_${Date.now()}.webm`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+            };
+
+            mediaRecorder.start(20000); // каждые 20 сек
+            isRecording = true;
+            console.log("🔴 Запись началась");
+        }
+
+        // 🛑 Если уходит — сохраняем!
+        window.addEventListener('beforeunload', (e) => {
+            if (isRecording) {
+                e.preventDefault();
+                e.returnValue = '';
+                console.log("⚠️ beforeunload: сохраняем запись");
+
+                mediaRecorder.requestData();
+                mediaRecorder.stop(); // вызовет onstop и сохранит локально
             }
         });
+
+        // 🔁 Запускаем после загрузки iframe
+        document.getElementById('proctorFrame').addEventListener('load', () => {
+            startRecording();
+        });
+
+
     </script>
+
 
 {% endblock %}
