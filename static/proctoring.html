@@ -69,33 +69,36 @@
 
         let violations = [];
 
-        if (faceScale < 30 || faceScale > 80) {
-            violations.push("badDistance");
-            checks.push("❌ Расстояние неправильное");
-        } else {
-            checks.push("✅ Расстояние");
+        function updateChecklist({faceScale, ratio, headTiltDown, multiFace}) {
+            const checks = [];
+
+            if (faceScale < 30 || faceScale > 80) {
+                checks.push("❌ Дистанция");
+            } else {
+                checks.push("✅ Дистанция");
+            }
+
+            if (ratio < 0.606) {
+                checks.push("❌ Поворот");
+            } else {
+                checks.push("✅ Поворот");
+            }
+
+            if (headTiltDown > -1) {
+                checks.push("❌ Наклон");
+            } else {
+                checks.push("✅ Наклон");
+            }
+
+            if (multiFace) {
+                checks.push("❗ Несколько лиц");
+            } else {
+                checks.push("✅ Одно лицо");
+            }
+
+            document.getElementById("checklist").innerHTML = checks.join(" | ");
         }
 
-        if (ratio < 0.606) {
-            violations.push("badRotation");
-            checks.push("❌ Поворот головы");
-        } else {
-            checks.push("✅ Поворот");
-        }
-
-        if (headTiltDown > -1) {
-            violations.push("badTilt");
-            checks.push("❌ Наклон головы");
-        } else {
-            checks.push("✅ Наклон");
-        }
-
-        if (multiFace) {
-            violations.push("multiFace");
-            checks.push("❗ Несколько лиц в кадре");
-        } else {
-            checks.push("✅ Одно лицо");
-        }
 
         // --- Пишем на страницу ---
         document.getElementById("checklist").innerHTML = checks.join("<br>");
