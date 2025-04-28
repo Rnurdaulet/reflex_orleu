@@ -73,28 +73,28 @@
             violations.push("badDistance");
             checks.push("❌ Расстояние неправильное");
         } else {
-            checks.push("✅ Расстояние нормальное");
+            checks.push("✅ Расстояние");
         }
 
         if (ratio < 0.606) {
             violations.push("badRotation");
             checks.push("❌ Поворот головы");
         } else {
-            checks.push("✅ Поворот головы нормальный");
+            checks.push("✅ Поворот");
         }
 
         if (headTiltDown > -1) {
             violations.push("badTilt");
             checks.push("❌ Наклон головы");
         } else {
-            checks.push("✅ Положение головы нормальное");
+            checks.push("✅ Наклон");
         }
 
         if (multiFace) {
             violations.push("multiFace");
             checks.push("❗ Несколько лиц в кадре");
         } else {
-            checks.push("✅ Одно лицо в кадре");
+            checks.push("✅ Одно лицо");
         }
 
         // --- Пишем на страницу ---
