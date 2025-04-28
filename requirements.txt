@@ -43,3 +43,5 @@ psycopg2-binary
 openpyxl
 pdfplumber
 boto3
+PyJWT
+

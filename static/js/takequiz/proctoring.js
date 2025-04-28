@@ -54,14 +54,13 @@
     });
 
     // 2) Клавиши: копирование, DevTools, просмотр источников
-    document.addEventListener('keydown', e => {
-        const k = e.key;
-        const forbidden = k === 'F12'
-        if (forbidden) {
-            e.preventDefault();
-            showViolation('DevTools запрещены');
-        }
-    });
+    // document.addEventListener('keydown', e => {
+    //     const k = e.key;
+    //     const forbidden = k === 'F12'
+    //     if (forbidden) {
+    //         e.preventDefault();
+    //         showViolation('DevTools запрещены');
+    //     }});
 
     // 3) Смена вкладки
     document.addEventListener('visibilitychange', () => {

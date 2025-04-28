@@ -150,3 +150,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
+LIVEKIT_API_KEY = "APIP8XxFmW7X2Kd"
+LIVEKIT_API_SECRET = "ylmxfzzXBlbYoGi53fhN5pCObfCLQwBfalo8hSDPiP2C"

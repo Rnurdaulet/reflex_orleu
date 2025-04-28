@@ -116,6 +116,7 @@
             <form id="quiz-form" method="post">
                 {% csrf_token %}
                 <input type="hidden" name="logs" id="logs-input">
+                <input type="hidden" name="logs" id="logs-input">
                 <div id="pages">
                     <!-- Страница 0: Приветствие -->
                     <div class="quiz-page active" data-step="0">
@@ -318,6 +319,7 @@
     </div>
 {% endblock %}
 {% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client@latest/dist/livekit-client.umd.min.js"></script>
     <script src="{% static 'js/takequiz/proctoring.js' %}"></script>
     <script src="{% static 'js/takequiz/chunkweb.js' %}"></script>
     <script>
