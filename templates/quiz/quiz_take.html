@@ -95,7 +95,7 @@
                 <!-- Инфо о пользователе -->
                 {% if quiz_person %}
                     <div class="justify-content-start align-content-center">
-                    <h6>{{ quiz_person.external_id }}</h6>
+                        <h6 id="externalId">{{ quiz_person.external_id }}</h6>
                         <h5>{{ quiz_person.firstname }} {{ quiz_person.lastname }}</h5><br>
 
                     </div>
@@ -318,9 +318,10 @@
         </div>
     </div>
 {% endblock %}
+
 {% block extra_js %}
+
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@latest/dist/livekit-client.umd.min.js"></script>
-    <script src="{% static 'js/takequiz/proctoring.js' %}"></script>
     <script src="{% static 'js/takequiz/chunkweb.js' %}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -347,7 +348,6 @@
                     el.classList.toggle('active', l === selected);
                 });
             });
-
 
             // по клику — открываем модалку
             document.getElementById('open-confirmation-modal')
@@ -436,7 +436,6 @@
                     obj.bar.textContent = answered + '/' + obj.total;
                 });
             });
-
             // Переключение языка
             document.querySelectorAll('.lang-switch').forEach(a => {
                 a.addEventListener('click', function (e) {
@@ -454,6 +453,16 @@
                         });
                     });
                 });
+            });
+
+            document.getElementById('proctorFrame').addEventListener('load', () => {
+                const iframe = document.getElementById('proctorFrame');
+                const externalId = "{{ quiz_person.external_id }}";
+
+                iframe.contentWindow.postMessage({
+                    type: "SET_EXTERNAL_ID",
+                    external_id: externalId
+                }, "*");
             });
         });
     </script>

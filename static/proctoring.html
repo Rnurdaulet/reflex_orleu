@@ -17,26 +17,27 @@
             transform: scaleX(-1);
         }
 
-#log, #checklist {
-  position: absolute;
-  left: 0;
-  bottom: 60px; /* отступ от низа окна */
-  background: rgba(0,0,0,0.3);
-  color: white;
-  padding: 8px;
-  font-family: monospace;
-  font-size: 12px;
-  max-width: 320px;
-  z-index: 999;
-}
-#log{
-    top:0;
-     bottom: 210px;
-}
+        #log, #checklist {
+            position: absolute;
+            left: 0;
+            bottom: 60px; /* отступ от низа окна */
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            padding: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            max-width: 320px;
+            z-index: 999;
+        }
 
-#checklist {
-  bottom: 0;
-}
+        #log {
+            top: 0;
+            bottom: 210px;
+        }
+
+        #checklist {
+            bottom: 0;
+        }
 
     </style>
 </head>
@@ -44,26 +45,69 @@
 <video id="video" autoplay playsinline width="320" height="240"></video>
 <canvas id="output" width="320" height="240"></canvas>
 <div id="log">Загрузка...</div>
-<div id="checklist">⏳ Чек-лист загружается...</div>
+<div id="checklist" style="display: none;">⏳ Чек-лист загружается...</div>
 
 <script>
+    window.addEventListener('message', function (event) {
+        if (event.data && event.data.type === "SET_EXTERNAL_ID") {
+            const externalId = event.data.external_id;
+            console.log("📨 Получен external_id:", externalId);
+
+            // можешь тут сохранить, отобразить или использовать
+            window.currentExternalId = externalId;
+
+            // например, выводим в лог
+            const logElement = document.getElementById('log');
+            if (logElement) {
+                logElement.textContent = `ID пользователя: ${externalId}`;
+            }
+        }
+    });
+
     function updateChecklist({faceScale, ratio, headTiltDown, multiFace}) {
         const checks = [];
 
-        if (faceScale < 30) checks.push("Слишком далеко ❌");
-        else if (faceScale > 80) checks.push("Слишком близко ❌");
-        else checks.push(" Расстояние: ✅");
+        let violations = [];
 
-        if (ratio < 0.606) checks.push("Поворот ❌");
-        else checks.push("Поворот: ✅");
+        if (faceScale < 30 || faceScale > 80) {
+            violations.push("badDistance");
+            checks.push("❌ Расстояние неправильное");
+        } else {
+            checks.push("✅ Расстояние нормальное");
+        }
 
-        if (headTiltDown > -1) checks.push("Наклон ❌");
-        else checks.push("Вертикально: ✅");
+        if (ratio < 0.606) {
+            violations.push("badRotation");
+            checks.push("❌ Поворот головы");
+        } else {
+            checks.push("✅ Поворот головы нормальный");
+        }
 
-        if (multiFace) checks.push("👥 Несколько лиц в кадре ❗");
+        if (headTiltDown > -1) {
+            violations.push("badTilt");
+            checks.push("❌ Наклон головы");
+        } else {
+            checks.push("✅ Положение головы нормальное");
+        }
 
-document.getElementById("checklist").innerHTML = checks.join("<br>");
+        if (multiFace) {
+            violations.push("multiFace");
+            checks.push("❗ Несколько лиц в кадре");
+        } else {
+            checks.push("✅ Одно лицо в кадре");
+        }
 
+        // --- Пишем на страницу ---
+        document.getElementById("checklist").innerHTML = checks.join("<br>");
+
+        // --- Отправляем в родителя ---
+        window.parent.postMessage({
+            type: "checklist_update",
+            data: {
+                timestamp: new Date().toISOString(),
+                violations,
+            }
+        }, "*");
     }
 
 
@@ -172,7 +216,8 @@ document.getElementById("checklist").innerHTML = checks.join("<br>");
                 ratio = eyeDist / faceWidth;
                 updateChecklist({faceScale, ratio, headTiltDown, multiFace: false});
 
-                log("✅ Лицо обнаружено");
+                log(`✅ ID: ${window.currentExternalId || "неизвестный пользователь"}`);
+
                 requestAnimationFrame(detect);
             };
 
@@ -188,6 +233,7 @@ document.getElementById("checklist").innerHTML = checks.join("<br>");
         type: "violation",
         data: {reason: "no_face", duration: 3}
     }, "*");
+
 
 </script>
 </body>

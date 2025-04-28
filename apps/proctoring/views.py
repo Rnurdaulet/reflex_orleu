@@ -100,3 +100,56 @@ def livekit_token_view(request):
 
     return JsonResponse({"token": jwt_token})
 
+
+
+# views.py
+import json
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
+from django.utils.timezone import now
+from django.http import JsonResponse
+from .models import QuizLog
+
+@csrf_exempt
+@login_required
+def upload_logs(request):
+    if request.method != 'POST':
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        logs = data.get('logs', [])
+
+        if not isinstance(logs, list):
+            return JsonResponse({"error": "Invalid logs format"}, status=400)
+
+        created = 0
+
+        for entry in logs:
+            if not isinstance(entry, dict):
+                continue  # пропускаем неправильные записи
+
+            chunk_index = entry.get('chunk_index')
+            video_chunk = None
+
+            if chunk_index is not None:
+                video_chunk = VideoChunk.objects.filter(
+                    user=request.user,
+                    chunk_index=chunk_index
+                ).first()
+
+            QuizLog.objects.create(
+                user=request.user,
+                session_id=entry.get('session_id') or None,
+                event=entry.get('event') or '',
+                detail=entry.get('detail', ''),
+                timestamp=entry.get('timestamp') or now(),
+                video_chunk=video_chunk,
+            )
+
+            created += 1
+
+        return JsonResponse({"status": "ok", "created": created})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
