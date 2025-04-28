@@ -58,8 +58,10 @@ class QuizPersonAdmin(ModelAdmin):
         "gender",
         "age",
         "years_experience",
+        "teaching_experience",
         "education",
         "region",
+        "language",
     )
     search_fields = ("external_id", "firstname", "lastname", "person__iin", "person__full_name")
     list_filter = ("gender", "education", "region")

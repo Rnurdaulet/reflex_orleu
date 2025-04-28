@@ -286,8 +286,10 @@ def quiz_results_view(request):
         gender = qp.gender if qp else ""
         age = qp.age if qp else ""
         exp = qp.years_experience if qp else ""
+        texp = qp.teaching_experience if qp else ""
         edu = qp.education_id if qp else ""
         reg = qp.region_id if qp else ""
+        lang = qp.language if qp else ""
         # ответы: {question_id: external_id}
         resp_map = {
             r.question_id: (r.answer.external_id if r.answer else "")
@@ -302,8 +304,10 @@ def quiz_results_view(request):
             'gender': gender,
             'age': age,
             'years_experience': exp,
+            'teaching_experience': texp,
             'education': edu,
             'region': reg,
+            'language': lang,
             'answers': answers,
         })
 
@@ -329,8 +333,8 @@ def export_results_csv(request):
     # заголовок
     header = [
                  "Id", "First name", "Last name",
-                 "Gender", "Age", "YearsExperience",
-                 "Education", "Region"
+                 "Gender", "Age", "YearsExperience","TeachingExperience"
+                 "Education", "Region","Language"
              ] + [f"Q{i + 1}" for i in range(len(questions))]
     writer.writerow(header)
 
@@ -344,6 +348,7 @@ def export_results_csv(request):
         exp = qp.years_experience if qp else ""
         edu = qp.education_id if qp else ""
         reg = qp.region_id if qp else ""
+        lang = qp.language if qp else ""
         resp_map = {
             r.question_id: (r.answer.external_id if r.answer else "")
             for r in sess.responses.all()
@@ -351,7 +356,7 @@ def export_results_csv(request):
         answers = [resp_map.get(q.id, "") for q in questions]
 
         writer.writerow([
-            ext_id, fn, ln, gender, age, exp, edu, reg, *answers
+            ext_id, fn, ln, gender, age, exp, edu, reg,lang, *answers
         ])
 
     return response
@@ -383,6 +388,7 @@ def export_results_excel(request):
         gender = qp.gender if qp else ""
         age = qp.age if qp else ""
         exp = qp.years_experience if qp else ""
+        texp = qp.teaching_experience if qp else ""
         edu = qp.education_id if qp else ""
         reg = qp.region_id if qp else ""
         resp_map = {
@@ -391,7 +397,7 @@ def export_results_excel(request):
         }
         answers = [resp_map.get(q.id, "") for q in questions]
 
-        ws.append([ext_id, fn, ln, gender, age, exp, edu, reg, *answers])
+        ws.append([ext_id, fn, ln, gender, age, exp,texp, edu, reg, *answers])
 
     stream = io.BytesIO()
     wb.save(stream)

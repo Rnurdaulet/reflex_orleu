@@ -1,12 +1,14 @@
 from django.contrib.auth.models import User
 from django.db import models
 
+
 class EducationLevel(models.Model):
     external_id = models.PositiveIntegerField(unique=True)
     description = models.CharField(max_length=255)
 
     def __str__(self):
         return f'{self.external_id} - {self.description}'
+
 
 class Region(models.Model):
     external_id = models.PositiveIntegerField(unique=True)
@@ -32,13 +34,20 @@ class QuizPerson(models.Model):
         ("male", "Мужской"),
         ("female", "Женский"),
     )
+    LANGUAGE_CHOICES = (
+        ("english", "English"),
+        ("kazakh", "Қазақша"),
+        ("russian", "Русский"),
+    )
     person = models.OneToOneField(Person, on_delete=models.CASCADE, verbose_name="Пользователь")
     external_id = models.CharField("Внешний ID", max_length=100)
     firstname = models.CharField("firstname", max_length=255)
     lastname = models.CharField("lastname", max_length=255)
     gender = models.CharField("Пол", max_length=6, choices=GENDER_CHOICES)
+    language = models.CharField("Язык", max_length=10, choices=LANGUAGE_CHOICES)
     age = models.PositiveIntegerField("Возраст")
     years_experience = models.PositiveIntegerField()
+    teaching_experience = models.PositiveIntegerField()
     education = models.ForeignKey(EducationLevel, on_delete=models.PROTECT, null=True, blank=True)
     region = models.ForeignKey(Region, on_delete=models.PROTECT, null=True, blank=True)
     signature_data = models.TextField("Подпись Данные по тесту", blank=True, null=True)

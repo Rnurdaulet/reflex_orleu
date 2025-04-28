@@ -1,0 +1,29 @@
+<h2>🧑‍💻 Видео записи</h2>
+
+<video id="videoPlayer" width="640" height="360" controls autoplay muted></video>
+
+<script>
+    const playlist = {{ playlist|safe }};
+    const player = document.getElementById('videoPlayer');
+    let current = 0;
+
+    // Обязательно установить mute ДО play()
+    player.muted = true;
+
+    function playNext() {
+        if (current >= playlist.length) {
+            console.log("✅ Воспроизведение завершено");
+            return;
+        }
+
+        player.src = playlist[current];
+        player.load();
+        player.play().catch(e => console.warn("⛔ Не удалось воспроизвести:", e));
+        current++;
+    }
+
+    player.addEventListener("ended", playNext);
+
+    // 🚀 Стартуем
+    playNext();
+</script>

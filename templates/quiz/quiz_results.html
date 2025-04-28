@@ -18,8 +18,10 @@
           <th>Gender</th>
           <th>Age</th>
           <th>YearsExperience</th>
+          <th>TeachingExperience</th>
           <th>Education</th>
           <th>Region</th>
+          <th>Language</th>
           {% for q in questions %}
             <th>Q{{ forloop.counter }}</th>
           {% endfor %}
@@ -34,8 +36,10 @@
           <td>{{ row.gender }}</td>
           <td>{{ row.age }}</td>
           <td>{{ row.years_experience }}</td>
+          <td>{{ row.teaching_experience }}</td>
           <td>{{ row.education }}</td>
           <td>{{ row.region }}</td>
+          <td>{{ row.language }}</td>
           {% for ans in row.answers %}
             <td>{{ ans }}</td>
           {% endfor %}

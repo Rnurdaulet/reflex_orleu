@@ -3,6 +3,7 @@
 import time
 import boto3
 from django.http import JsonResponse
+from django.utils.html import format_html
 from django.views.decorators.csrf import csrf_exempt
 from .models import VideoChunk
 
@@ -42,3 +43,19 @@ def get_presigned_url(request):
         'url': presigned_url,
         'key': key
     })
+
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from .models import VideoChunk
+
+@login_required
+def playback_view(request):
+    chunks = VideoChunk.objects.filter(user=request.user).order_by("chunk_index")
+
+    playlist = [
+        f"https://storage.yandexcloud.net/rrvideos/{chunk.s3_key}"
+        for chunk in chunks
+    ]
+
+    return render(request, "proctoring/playback.html", {"playlist": playlist})

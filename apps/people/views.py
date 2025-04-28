@@ -140,8 +140,10 @@ def fill_quizperson(request):
             gender=data["gender"],
             age=data["age"],
             years_experience=data["years_experience"],
+            teaching_experience=data["teaching_experience"],
             education_id=data["education"],
             region_id=data["region"],
+            language=data["language"],
         )
         return redirect("quiz_start")
 

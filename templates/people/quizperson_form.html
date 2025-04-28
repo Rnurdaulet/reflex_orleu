@@ -8,20 +8,9 @@
             <div class="col-lg-8">
                 <div class="card shadow-sm">
                     <div class="card-body">
-                        <h3 class="mb-4">🧾 Personal Information</h3>
-
+                        <h3 class="mb-4">Data of the test candidate</h3>
                         <form method="post" class="needs-validation" novalidate id="quizperson-form">
                             {% csrf_token %}
-
-
-                            <div class="row">
-                                <div class="col-6">
-
-                                </div>
-                                <div class="col-6">
-
-                                </div>
-                            </div>
                             <div class="row">
                                 <div class="col-6">
                                     <!-- First Name -->
@@ -43,11 +32,17 @@
                                             Only Latin characters allowed.
                                         </div>
                                     </div>
-
                                 </div>
                             </div>
                             <div class="row">
                                 <div class="col-6">
+                                    <!-- External ID (read-only) -->
+                                    <div class="mb-3">
+                                        <label class="form-label">External ID</label>
+                                        <input type="text" name="external_id"
+                                               class="form-control-plaintext bg-light text-muted"
+                                               value="{{ person.external_id }}" readonly>
+                                    </div>
                                     <!-- Gender -->
                                     <div class="mb-3">
                                         <label class="form-label">Gender</label>
@@ -55,6 +50,16 @@
                                             <option value="" disabled selected>— Выберите пол —</option>
                                             <option value="male">Male</option>
                                             <option value="female">Female</option>
+                                        </select>
+                                    </div>
+                                    <!-- Language -->
+                                    <div class="mb-3">
+                                        <label class="form-label">Language</label>
+                                        <select name="language" class="form-select" required>
+                                            <option value="" disabled selected>— Выберите язык —</option>
+                                            <option value="english">English</option>
+                                            <option value="kazakh">Қазақша</option>
+                                            <option value="russian">Русский</option>
                                         </select>
                                     </div>
                                 </div>
@@ -65,20 +70,6 @@
                                         <input type="number" name="age" class="form-control" required min="18"
                                                max="100">
                                     </div>
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-6">
-                                    <!-- External ID (read-only) -->
-                                    <div class="mb-3">
-                                        <label class="form-label">External ID</label>
-                                        <input type="text" name="external_id"
-                                               class="form-control-plaintext bg-light text-muted"
-                                               value="{{ person.external_id }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="col-6">
                                     <!-- Years of Experience -->
                                     <div class="mb-3">
                                         <label class="form-label">Years of Experience</label>
@@ -86,10 +77,15 @@
                                                min="0"
                                                max="80">
                                     </div>
+                                    <!-- Years of Experience -->
+                                    <div class="mb-3">
+                                        <label class="form-label">Teaching Experience</label>
+                                        <input type="number" name="teaching_experience" class="form-control" required
+                                               min="0"
+                                               max="80">
+                                    </div>
                                 </div>
                             </div>
-
-
                             <!-- Education -->
                             <div class="mb-3">
                                 <label class="form-label">Education Level</label>
@@ -116,13 +112,48 @@
                             <div class="d-grid mt-4">
                                 <button type="submit" class="btn btn-primary btn-lg">Save and Continue</button>
                             </div>
-
                         </form>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    <div class="modal fade" id="languageConfirmationModal" tabindex="-1"
+         aria-labelledby="languageConfirmationModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="languageConfirmationModalLabel">
+                        <span class="lang-ru">Подтверждение выбора языка</span>
+                        <span class="lang-kk">Тілді таңдауды растау</span>
+                        <span class="lang-en">Language Selection Confirmation</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>
+                        <span class="lang-ru">После сохранения изменить язык будет невозможно. Вы уверены в выборе?</span>
+                        <span class="lang-kk">Сақтағаннан кейін тілді өзгерту мүмкін болмайды. Таңдауыңызға сенімдісіз бе?</span>
+                        <span class="lang-en">After saving, you won't be able to change the language. Are you sure?</span>
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <span class="lang-ru">Отмена</span>
+                        <span class="lang-kk">Бас тарту</span>
+                        <span class="lang-en">Cancel</span>
+                    </button>
+                    <button type="button" class="btn btn-primary" id="confirm-language-submit">
+                        <span class="lang-ru">Подтвердить</span>
+                        <span class="lang-kk">Растау</span>
+                        <span class="lang-en">Confirm</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
 
     <script>
         const LATIN_REGEX = /^[A-Za-z\s\-']+$/;
@@ -135,12 +166,13 @@
             const form = document.getElementById("quizperson-form");
             const firstname = document.getElementById("firstname");
             const lastname = document.getElementById("lastname");
+            const languageSelect = document.querySelector('select[name="language"]');
 
             form.addEventListener("submit", function (event) {
                 let valid = true;
 
                 [firstname, lastname].forEach(field => {
-                    if (!isLatin(field.value.trim())) {
+                    if (!/^[A-Za-z\s\-']+$/.test(field.value.trim())) {
                         field.classList.add("is-invalid");
                         valid = false;
                     } else {
@@ -151,10 +183,39 @@
                 if (!form.checkValidity() || !valid) {
                     event.preventDefault();
                     event.stopPropagation();
+                } else {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const selectedLang = languageSelect.value; // "russian", "kazakh", "english"
+
+                    document.querySelectorAll('#languageConfirmationModal .lang-ru, #languageConfirmationModal .lang-kk, #languageConfirmationModal .lang-en')
+                        .forEach(el => el.style.display = 'none');
+
+                    if (selectedLang === 'russian') {
+                        document.querySelectorAll('#languageConfirmationModal .lang-ru')
+                            .forEach(el => el.style.display = 'inline');
+                    } else if (selectedLang === 'kazakh') {
+                        document.querySelectorAll('#languageConfirmationModal .lang-kk')
+                            .forEach(el => el.style.display = 'inline');
+                    } else if (selectedLang === 'english') {
+                        document.querySelectorAll('#languageConfirmationModal .lang-en')
+                            .forEach(el => el.style.display = 'inline');
+                    }
+
+                    const modal = new bootstrap.Modal(document.getElementById('languageConfirmationModal'));
+                    modal.show();
                 }
 
                 form.classList.add("was-validated");
             });
+
+            document.getElementById('confirm-language-submit').addEventListener('click', function () {
+                form.submit();
+            });
         });
+
     </script>
+
+
 {% endblock %}

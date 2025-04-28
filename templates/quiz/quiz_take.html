@@ -95,13 +95,14 @@
                 <!-- Инфо о пользователе -->
                 {% if quiz_person %}
                     <div class="justify-content-start align-content-center">
-                        <strong>{{ quiz_person.firstname }} {{ quiz_person.lastname }}</strong><br>
-                        {{ quiz_person.external_id }}
+                    <h6>{{ quiz_person.external_id }}</h6>
+                        <h5>{{ quiz_person.firstname }} {{ quiz_person.lastname }}</h5><br>
+
                     </div>
                 {% endif %}
                 <strong class="justify-content-end align-content-center" id="time">--:--</strong>
                 <!-- Language dropdown -->
-                <div class="dropdown justify-content-end align-content-center">
+                <div class="dropdown justify-content-end align-content-center d-none">
                     <button class="btn btn-secondary dropdown-toggle" type="button"
                             id="langDropdown" data-bs-toggle="dropdown" aria-expanded="false">Русский
                     </button>
@@ -266,15 +267,6 @@
 
         </aside>
     </div>
-    {#    <div id="proctorWrapper">#}
-    {#        <iframe#}
-    {#                id="proctorFrame"#}
-    {#                src="{% static '/proctoring.html' %}"#}
-    {#                allow="camera; microphone">#}
-    {#        </iframe>#}
-    {#        <canvas id="output" width="280" height="240"></canvas>#}
-    {#    </div>#}
-
     <div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel"
          aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -321,124 +313,39 @@
                 <strong class="me-auto">Нарушение!</strong>
                 <button type="button" class="btn-close ms-2" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
-            <div class="toast-body">Нарушение правил тестирования</div>
+            <div id="violationToastbody" class="toast-body">Нарушение правил тестирования</div>
         </div>
     </div>
 {% endblock %}
 {% block extra_js %}
-
-
+    <script src="{% static 'js/takequiz/proctoring.js' %}"></script>
+    <script src="{% static 'js/takequiz/chunkweb.js' %}"></script>
     <script>
-        (function () {
-            'use strict';
-
-            const LOG_KEY = 'quizViolationsLog';  // ключ в localStorage
-            if (localStorage.getItem('quizViolationsLog')) {
-                localStorage.removeItem('quizViolationsLog');
-            }
-            let logs = loadLogs();                // текущий массив логов
-
-            // --- Утилиты для работы с localStorage ---
-            function loadLogs() {
-                try {
-                    const raw = localStorage.getItem(LOG_KEY);
-                    return raw ? JSON.parse(raw) : [];
-                } catch {
-                    return [];
-                }
-            }
-
-            function saveLogs() {
-                localStorage.setItem(LOG_KEY, JSON.stringify(logs));
-            }
-
-            window.logEvent = function (type, detail = '') {
-                const entry = {
-                    event: type,
-                    detail: detail,
-                    timestamp: new Date().toISOString()
-                };
-                logs.push(entry);
-                saveLogs();
-                console.debug('Logged:', entry);
-            };
-
-            // --- Логируем открытие страницы сразу при загрузке ---
-            logEvent('page_opened');
-
-            // --- Подготовка уведомления (Bootstrap-toast) ---
-            const toastEl = document.getElementById('violationToast');
-            const toast = bootstrap.Toast.getOrCreateInstance(toastEl);
-
-            window.showViolation = function (msg) {
-                toastEl.querySelector('.toast-body').textContent = msg;
-                toast.show();
-                logEvent('violation', msg);
-            };
-
-
-            // --- Обработчики запрещённых действий ---
-            // 1) Правый клик
-            document.addEventListener('contextmenu', e => {
-                e.preventDefault();
-                showViolation('Правый клик запрещён');
-            });
-
-            // 2) Клавиши: копирование, DevTools, просмотр источников
-            {#document.addEventListener('keydown', e => {#}
-            {#    const k = e.key;#}
-            {#    const forbidden = k === 'F12'#}
-            {#    if (forbidden) {#}
-            {#        e.preventDefault();#}
-            {#        showViolation('DevTools запрещены');#}
-            {#    }});#}
-
-            // 3) Смена вкладки
-            document.addEventListener('visibilitychange', () => {
-                if (document.hidden) {
-                    showViolation('Покидать вкладку во время теста нельзя');
-                }
-            });
-            window.addEventListener('resize', () => {
-                showViolation('Изменение размера окна запрещено');
-            });
-            // Блокируем прямое копирование буфера
-            document.addEventListener('copy', e => {
-                e.preventDefault();
-                showViolation('Копирование запрещено');
-            });
-            document.addEventListener('cut', e => {
-                e.preventDefault();
-                showViolation('Вырезание запрещено');
-            });
-            document.addEventListener('paste', e => {
-                e.preventDefault();
-                showViolation('Вставка запрещена');
-            });
-            document.addEventListener('keydown', e => {
-                const mod = e.ctrlKey || e.metaKey;
-                if (mod && e.key.toLowerCase() === 'p') {
-                    e.preventDefault();
-                    showViolation('Печать страницы запрещена');
-                }
-            });
-            window.addEventListener('beforeprint', e => {
-                e.preventDefault();
-                showViolation('Печать экрана запрещена');
-            });
-            window.addEventListener('offline', () => showViolation('Нет сети во время теста запрещено'));
-            window.addEventListener('online', () => logEvent('online', 'Сеть восстановлена'));
-
-            window.addEventListener('blur', () => showViolation('Покидать окно теста запрещено'));
-            window.addEventListener('focus', () => logEvent('focus', 'Вернулись в окно'));
-
-
-            // --- Для ручного просмотра логов в консоли ---
-            window.getViolationLogs = () => loadLogs();
-
-        })();
-
         document.addEventListener('DOMContentLoaded', function () {
+            const initialLang = '{{ quiz_person.language }}';  // "russian", "kazakh", "english"
+            const langMap = {
+                'russian': 'ru',
+                'kazakh': 'kk',
+                'english': 'en'
+            };
+            const selected = langMap[initialLang] || 'ru';  // fallback на русский если что-то пошло не так
+
+            // Установим язык в кнопке
+            const langButton = document.getElementById('langDropdown');
+            const activeLink = document.querySelector(`.lang-switch[data-lang="${selected}"]`);
+            if (activeLink) {
+                langButton.textContent = activeLink.textContent;
+                document.querySelectorAll('.lang-switch').forEach(x => x.classList.remove('active'));
+                activeLink.classList.add('active');
+            }
+
+            // Включим только нужные спаны
+            ['ru', 'kk', 'en'].forEach(l => {
+                document.querySelectorAll('.lang-' + l).forEach(el => {
+                    el.classList.toggle('active', l === selected);
+                });
+            });
+
 
             // по клику — открываем модалку
             document.getElementById('open-confirmation-modal')
@@ -548,126 +455,4 @@
             });
         });
     </script>
-    <script>
-        let mediaRecorder, chunks = [], drawId;
-        let canvas = document.getElementById('output');
-        let ctx = canvas.getContext('2d');
-        let chunkInterval;
-        let isRecording = false;
-
-        let chunkIndex = 0;
-
-        async function uploadChunk(blob) {
-            const res = await fetch(`/api/get-presigned-url/?index=${chunkIndex}`);
-            const {url, key} = await res.json();
-
-            await fetch(url, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'video/webm'
-                },
-                body: blob
-            });
-
-            console.log(`☁️ Залит чанк #${chunkIndex} в ${key}`);
-            chunkIndex++;
-        }
-
-        async function startRecording() {
-            const iframe = document.getElementById('proctorFrame');
-            const iframeDoc = iframe.contentWindow.document;
-
-            const video = iframeDoc.getElementById('video');
-            const log = iframeDoc.getElementById('log');
-            const checklist = iframeDoc.getElementById('checklist');
-
-            if (!video) {
-                console.warn("⚠️ Видео внутри iframe не найдено");
-                return;
-            }
-
-            const audioStream = await navigator.mediaDevices.getUserMedia({audio: true});
-
-            function draw() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-                ctx.font = "9px monospace";
-                ctx.fillStyle = "rgba(0,0,0,0.6)";
-                ctx.fillRect(0, 0, 320, 40);
-                ctx.fillStyle = "lime";
-                ctx.fillText(log?.textContent || '', 10, 15);
-
-                ctx.fillStyle = "yellow";
-                const lines = (checklist?.textContent || '').split("<br>");
-                lines.forEach((line, i) => {
-                    ctx.fillText(line, 10, 30 + i * 15);
-                });
-
-                drawId = requestAnimationFrame(draw);
-            }
-
-            draw();
-
-            const videoStream = canvas.captureStream(10);
-            const combinedStream = new MediaStream([
-                ...videoStream.getVideoTracks(),
-                ...audioStream.getAudioTracks()
-            ]);
-
-            mediaRecorder = new MediaRecorder(combinedStream, {mimeType: 'video/webm'});
-
-            mediaRecorder.ondataavailable = (e) => {
-                if (e.data.size > 0) {
-                    console.log(`💾 Чанк #${chunkIndex} → ${Math.round(e.data.size / 1024)} KB`);
-                    uploadChunk(e.data).catch(err => {
-                        console.error("❌ Ошибка загрузки чанка:", err);
-                    });
-                }
-
-            };
-
-            mediaRecorder.onstop = () => {
-                cancelAnimationFrame(drawId);
-                clearInterval(chunkInterval);
-                isRecording = false;
-                console.log("🛑 Запись остановлена");
-
-                if (chunks.length > 0) {
-                    const blob = new Blob(chunks, {type: 'video/webm'});
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = `recording_${Date.now()}.webm`;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                }
-            };
-
-            mediaRecorder.start(20000); // каждые 20 сек
-            isRecording = true;
-            console.log("🔴 Запись началась");
-        }
-
-        // 🛑 Если уходит — сохраняем!
-        window.addEventListener('beforeunload', (e) => {
-            if (isRecording) {
-                e.preventDefault();
-                e.returnValue = '';
-                console.log("⚠️ beforeunload: сохраняем запись");
-
-                mediaRecorder.requestData();
-                mediaRecorder.stop(); // вызовет onstop и сохранит локально
-            }
-        });
-
-        // 🔁 Запускаем после загрузки iframe
-        document.getElementById('proctorFrame').addEventListener('load', () => {
-            startRecording();
-        });
-
-
-    </script>
-
-
 {% endblock %}
