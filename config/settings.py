@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'apps.people',
     'apps.survey',
     'apps.quiz',
@@ -49,6 +50,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -151,6 +153,8 @@ CSRF_TRUSTED_ORIGINS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+
+CORS_ALLOW_ALL_ORIGINS = True
 
 LIVEKIT_API_KEY = "APIP8XxFmW7X2Kd"
 LIVEKIT_API_SECRET = "ylmxfzzXBlbYoGi53fhN5pCObfCLQwBfalo8hSDPiP2C"

@@ -65,5 +65,5 @@ class QuizPersonAdmin(ModelAdmin):
     )
     search_fields = ("external_id", "firstname", "lastname", "person__iin", "person__full_name")
     list_filter = ("gender", "education", "region")
-    readonly_fields = ("external_id","signature_data","signature")
+    readonly_fields = ("external_id","signature_data",)
     autocomplete_fields = ("person", "education", "region")

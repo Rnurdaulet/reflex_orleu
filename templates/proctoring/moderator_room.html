@@ -1,0 +1,507 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Модераторская комната{% endblock %}
+
+{% block content %}
+    <div class="row">
+ <main class="col-lg-9">
+    <h2 class="mb-4">Видео участников</h2>
+    <div id="loading" class="alert alert-info" style="display: none;">Подключение...</div>
+    <button id="joinButton" class="btn btn-primary mb-3">Подключиться</button>
+    <div id="videoGrid" class="video-grid" style="max-height: 600px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px;"></div>
+</main>
+
+<aside class="col-lg-3">
+    <h3 class="mb-4">Список участников</h3>
+    <p><strong>В сети:</strong> <span id="participantCount">0</span></p>
+    <div id="participantsList">
+        <div class="mb-4">
+            <h5 id="videoListTitle" class="mb-2">Участники с видео (0)</h5>
+            <ul id="videoList" class="list-group small"></ul>
+        </div>
+        <div class="mb-4">
+            <h5 id="signedListTitle" class="mb-2">Подписавшие (0)</h5>
+            <ul id="signedList" class="list-group small"></ul>
+        </div>
+        <div class="mb-4">
+            <h5 id="offlineListTitle" class="mb-2">Оффлайн участники (0)</h5>
+            <ul id="offlineList" class="list-group small"></ul>
+        </div>
+    </div>
+</aside>
+
+
+    <!-- Модальное окно для логов -->
+    <div class="modal fade" id="logsModal" tabindex="-1" aria-labelledby="logsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="logsModalLabel">Логи участника</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="logsLoading" class="alert alert-info" style="display: none;">Загрузка логов...</div>
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Событие</th>
+                            <th>Детали</th>
+                            <th>Время</th>
+                            <th>Видео</th>
+                        </tr>
+                        </thead>
+                        <tbody id="logsTableBody"></tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100%, 1fr));
+            gap: 10px;
+        }
+
+        @media (min-width: 768px) {
+            .video-grid {
+                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            }
+        }
+
+        .alert-warning {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            padding: 10px;
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            border-radius: 4px;
+        }
+
+        .list-group-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+        }
+
+        .list-group-item .badge {
+            margin-left: 10px;
+        }
+
+        .list-group-item.clickable {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .list-group-item.clickable:hover {
+            background-color: #f0f0f0;
+        }
+
+        .mb-3 h4 {
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .video-participant-name {
+            margin-top: 5px;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: #333;
+        }
+
+        .logs-btn {
+            margin-left: 5px;
+        }
+    </style>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client@latest/dist/livekit-client.umd.min.js"></script>
+    <script>
+        // Список участников из Django
+        const initialPersons = [
+            {% for person in persons %}
+                {
+                    external_id: "{{ person.external_id|default:'unknown' }}",
+                    full_name: "{{ person.full_name|default:'Неизвестный участник' }}"
+                },
+            {% endfor %}
+        ];
+
+        const livekitUrl = "{{ livekit_url|default:'wss://livekit.odx.kz' }}";
+        let room = null;
+        let activeVideos = new Set();
+        let videoTracks = new Map();
+        let observer = null;
+
+        async function connectModerator() {
+            document.getElementById('loading').style.display = 'block';
+            try {
+                console.log('🔑 Получение токена...');
+                await fetchSignedUsers();
+                const res = await fetch('/api/livekit/token?room=default-room');
+                const data = await res.json();
+                console.log('API response:', data);
+                const {token} = data;
+                if (!token) throw new Error('Не получен токен');
+
+                room = new LivekitClient.Room({adaptiveStream: true, dynacast: true});
+
+                observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        const wrapper = entry.target;
+                        const participantId = wrapper.dataset.participantId;
+                        const trackInfo = videoTracks.get(participantId);
+
+                        if (!trackInfo) return;
+
+                        if (entry.isIntersecting) {
+                            if (!trackInfo.isSubscribed) {
+                                trackInfo.track.attach(wrapper.querySelector('video'));
+                                trackInfo.isSubscribed = true;
+                                console.log(`Subscribed to video for ${participantId}`);
+                            }
+                        } else {
+                            if (trackInfo.isSubscribed) {
+                                trackInfo.track.detach();
+                                trackInfo.isSubscribed = false;
+                                console.log(`Unsubscribed from video for ${participantId}`);
+                            }
+                        }
+                    });
+                }, {
+                    root: document.getElementById('videoGrid'),
+                    threshold: 0.1
+                });
+
+                room.on(LivekitClient.RoomEvent.ParticipantConnected, (participant) => {
+                    console.log('Participant connected:', participant.identity);
+                    updateParticipantList();
+                });
+                room.on(LivekitClient.RoomEvent.ParticipantDisconnected, (participant) => {
+                    console.log('Participant disconnected:', participant.identity);
+                    activeVideos.delete(participant.identity);
+                    videoTracks.delete(participant.identity);
+                    const videoElements = document.querySelectorAll(`#videoGrid [data-participant-id="${participant.identity}"]`);
+                    videoElements.forEach(element => {
+                        observer.unobserve(element);
+                        element.remove();
+                    });
+                    console.log(`Removed video elements for ${participant.identity}:`, videoElements.length);
+                    updateParticipantList();
+                });
+                room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, pub, participant) => {
+                    console.log('TrackSubscribed:', participant.identity, 'Track kind:', track.kind);
+                    if (track.kind === LivekitClient.Track.Kind.Video) {
+                        const wrapper = document.createElement('div');
+                        wrapper.style.position = 'relative';
+                        wrapper.style.display = 'inline-block';
+                        wrapper.dataset.participantId = participant.identity;
+
+                        const video = document.createElement('video');
+                        video.style.width = '100%';
+                        video.style.maxWidth = '320px';
+                        video.style.border = '2px solid blue';
+                        video.style.borderRadius = '8px';
+                        video.autoplay = true;
+                        video.playsInline = true;
+
+                        const nameDiv = document.createElement('div');
+                        nameDiv.className = 'video-participant-name';
+                        const person = initialPersons.find(p => p.external_id === participant.identity) || {
+                            external_id: participant.identity,
+                            full_name: 'Неизвестный участник'
+                        };
+                        nameDiv.textContent = person.full_name;
+
+                        wrapper.appendChild(video);
+                        wrapper.appendChild(nameDiv);
+                        document.getElementById('videoGrid').appendChild(wrapper);
+
+                        videoTracks.set(participant.identity, {
+                            track: track,
+                            wrapper: wrapper,
+                            isSubscribed: false
+                        });
+
+                        observer.observe(wrapper);
+
+                        activeVideos.add(participant.identity);
+                        updateParticipantList();
+                    }
+                });
+                room.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track, pub, participant) => {
+                    console.log('TrackUnsubscribed:', participant.identity, 'Track kind:', track.kind);
+                    if (track.kind === LivekitClient.Track.Kind.Video && track.attachedElements.length) {
+                        const trackInfo = videoTracks.get(participant.identity);
+                        if (trackInfo) {
+                            observer.unobserve(trackInfo.wrapper);
+                            trackInfo.wrapper.remove();
+                            videoTracks.delete(participant.identity);
+                        }
+                        activeVideos.delete(participant.identity);
+                    }
+                    updateParticipantList();
+                });
+                room.on(LivekitClient.RoomEvent.Disconnected, (reason) => {
+                    console.warn('❌ Отключено от комнаты. Причина:', reason);
+                    showNotification(`Отключено от комнаты: ${reason || 'Неизвестная причина'}`);
+                    activeVideos.clear();
+                    videoTracks.forEach(trackInfo => {
+                        observer.unobserve(trackInfo.wrapper);
+                    });
+                    videoTracks.clear();
+                    document.getElementById('videoGrid').innerHTML = '';
+                    updateParticipantList();
+                });
+
+                await room.connect(livekitUrl, token);
+                console.log('🟢 Успешное подключение к комнате', room.state);
+                setTimeout(updateParticipantList, 500);
+            } catch (err) {
+                console.error('🚨 Ошибка подключения:', err.message, err);
+                showNotification(`Ошибка подключения: ${err.message}`);
+                setTimeout(connectModerator, 5000);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        async function loadLogs(externalId) {
+            const modalLabel = document.getElementById('logsModalLabel');
+            const logsTableBody = document.getElementById('logsTableBody');
+            const logsLoading = document.getElementById('logsLoading');
+
+            logsLoading.style.display = 'block';
+            logsTableBody.innerHTML = '';
+
+            try {
+                const person = initialPersons.find(p => p.external_id === externalId) || {full_name: 'Неизвестный участник'};
+                modalLabel.textContent = `Логи участника: ${person.full_name} (${externalId})`;
+
+                const response = await fetch(`/api/logs/?external_id=${externalId}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Ошибка загрузки логов');
+                }
+
+                const logs = (data.logs || []).filter(log => log.event !== 'chunk_uploaded');
+                if (logs.length === 0) {
+                    logsTableBody.innerHTML = '<tr><td colspan="5">Логов не найдено</td></tr>';
+                } else {
+                    logs.forEach(log => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                    <td>${log.id}</td>
+                    <td>${log.event}</td>
+                    <td>${log.detail}</td>
+                    <td>${new Date(log.timestamp).toLocaleString()}</td>
+                    <td>${log.video_chunk_url ? `<a href="${log.video_chunk_url}" target="_blank">Смотреть</a>` : 'Нет'}</td>
+                `;
+                        logsTableBody.appendChild(row);
+                    });
+                }
+            } catch (err) {
+                console.error('Ошибка загрузки логов:', err);
+                logsTableBody.innerHTML = `<tr><td colspan="5">Ошибка: ${err.message}</td></tr>`;
+            } finally {
+                logsLoading.style.display = 'none';
+            }
+        }
+
+        let signedExternalIds = new Set();
+
+        async function fetchSignedUsers() {
+            try {
+                const res = await fetch('/api/signed-users/');
+                const data = await res.json();
+                if (res.ok && data.signed_users) {
+                    signedExternalIds = new Set(data.signed_users.map(user => user.external_id));
+                    console.log('✅ Получены подписавшие:', [...signedExternalIds]);
+                } else {
+                    console.error('Ошибка загрузки подписавших:', data.error);
+                }
+            } catch (err) {
+                console.error('Ошибка запроса подписавших:', err);
+            } finally {
+                // Обновляем через 5 минут независимо от успеха или ошибки
+                setTimeout(fetchSignedUsers, 5 * 60 * 1000);
+            }
+        }
+
+
+function updateParticipantList() {
+    console.log('🔄 Обновление списка участников');
+    const participantCount = document.getElementById('participantCount');
+    const videoList = document.getElementById('videoList');
+    const signedList = document.getElementById('signedList');
+    const offlineList = document.getElementById('offlineList');
+    const videoListTitle = document.getElementById('videoListTitle');
+    const signedListTitle = document.getElementById('signedListTitle');
+    const offlineListTitle = document.getElementById('offlineListTitle');
+
+    if (!participantCount || !videoList || !signedList || !offlineList ||
+        !videoListTitle || !signedListTitle || !offlineListTitle) {
+        console.warn('Не найдены элементы для списка участников');
+        return;
+    }
+
+    videoList.innerHTML = '';
+    signedList.innerHTML = '';
+    offlineList.innerHTML = '';
+
+    let videoParticipants = [];
+    let signedParticipants = [];
+    let offlineParticipants = [];
+
+    const videoParticipantsSet = new Set();
+    if (activeVideos.size > 0) {
+        [...activeVideos].forEach(identity => {
+            const person = initialPersons.find(p => p.external_id === identity) || {
+                external_id: identity,
+                full_name: 'Неизвестный участник'
+            };
+            const participantData = {
+                external_id: identity,
+                full_name: person.full_name
+            };
+            videoParticipants.push(participantData);
+            videoParticipantsSet.add(identity);
+        });
+    }
+
+    signedParticipants = initialPersons
+        .filter(person =>
+            signedExternalIds.has(person.external_id) &&
+            !videoParticipants.some(p => p.external_id === person.external_id)
+        )
+        .map(person => ({
+            external_id: person.external_id,
+            full_name: person.full_name
+        }));
+
+    offlineParticipants = initialPersons
+        .filter(person =>
+            !videoParticipants.some(p => p.external_id === person.external_id) &&
+            !signedParticipants.some(p => p.external_id === person.external_id)
+        )
+        .map(person => ({
+            external_id: person.external_id,
+            full_name: person.full_name
+        }));
+
+    console.log('Участники с видео:', videoParticipants);
+    console.log('Подписавшие:', signedParticipants);
+    console.log('Оффлайн участники:', offlineParticipants);
+
+    videoListTitle.textContent = `Видео (${videoParticipants.length})`;
+    signedListTitle.textContent = `Подписавшие (${signedParticipants.length})`;
+    offlineListTitle.textContent = `Оффлайн (${offlineParticipants.length})`;
+
+    participantCount.textContent = videoParticipants.length + signedParticipants.length;
+
+    function createListItem(participant, status) {
+        const li = document.createElement('li');
+        li.className = 'list-group-item';
+        li.dataset.externalId = participant.external_id;
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = participant.full_name;
+
+        const badge = document.createElement('span');
+        badge.className = 'badge';
+        if (status === 'video') {
+            badge.className += ' bg-success';
+            badge.textContent = '🟢';
+
+            li.classList.add('clickable');
+            li.addEventListener('click', () => {
+                const videoElement = document.querySelector(`#videoGrid [data-participant-id="${participant.external_id}"]`);
+                if (videoElement) {
+                    videoElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    console.log(`Scrolled to video for ${participant.external_id}`);
+                }
+            });
+
+            const logsBtn = document.createElement('button');
+            logsBtn.className = 'btn btn-sm btn-info logs-btn';
+            logsBtn.textContent = 'Логи';
+            logsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                loadLogs(participant.external_id);
+                const modal = new bootstrap.Modal(document.getElementById('logsModal'));
+                modal.show();
+            });
+
+            li.appendChild(nameSpan);
+            li.appendChild(logsBtn);
+            li.appendChild(badge);
+        } else {
+            if (status === 'signed') {
+                badge.className += ' bg-primary';
+                badge.textContent = '✅ Подписал';
+            } else {
+                badge.className += ' bg-secondary';
+                badge.textContent = '⚪ Оффлайн';
+            }
+            li.appendChild(nameSpan);
+            li.appendChild(badge);
+        }
+
+        return li;
+    }
+
+    videoParticipants.forEach(participant => {
+        videoList.appendChild(createListItem(participant, 'video'));
+    });
+    signedParticipants.forEach(participant => {
+        signedList.appendChild(createListItem(participant, 'signed'));
+    });
+    offlineParticipants.forEach(participant => {
+        offlineList.appendChild(createListItem(participant, 'offline'));
+    });
+
+    if (!videoParticipants.length) {
+        const li = document.createElement('li');
+        li.className = 'list-group-item';
+        li.textContent = 'Нет участников';
+        videoList.appendChild(li);
+    }
+    if (!signedParticipants.length) {
+        const li = document.createElement('li');
+        li.className = 'list-group-item';
+        li.textContent = 'Нет участников';
+        signedList.appendChild(li);
+    }
+    if (!offlineParticipants.length) {
+        const li = document.createElement('li');
+        li.className = 'list-group-item';
+        li.textContent = 'Нет участников';
+        offlineList.appendChild(li);
+    }
+}
+
+
+
+        function showNotification(message) {
+            console.log('🔔', message);
+            const notif = document.createElement('div');
+            notif.className = 'alert alert-warning';
+            notif.textContent = message;
+            document.body.appendChild(notif);
+            setTimeout(() => notif.remove(), 4000);
+        }
+
+        document.getElementById('joinButton').addEventListener('click', connectModerator);
+    </script>
+{% endblock %}

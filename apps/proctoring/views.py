@@ -5,7 +5,11 @@ import boto3
 from django.http import JsonResponse
 from django.utils.html import format_html
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET
+
 from .models import VideoChunk
+from ..people.models import Person, QuizPerson
+
 
 # можно обернуть в @login_required
 @csrf_exempt
@@ -65,18 +69,19 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 
-@login_required
+
 def livekit_token_view(request):
     user = request.user
     room_name = request.GET.get("room", "default-room")
-
-    # Безопасное получение identity
-    if user.username and user.username.strip():
-        user_identity = user.username.strip()
-    elif user.id:
-        user_identity = f"user_{user.id}"
-    else:
-        return JsonResponse({"error": "Cannot determine user identity"}, status=400)
+    identity = request.GET.get('identity')
+    if not identity:
+        try:
+            person = Person.objects.get(user=user)
+            identity = person.external_id.strip()
+            if not identity:
+                return JsonResponse({"error": "External ID is empty"}, status=400)
+        except Person.DoesNotExist:
+            return JsonResponse({"error": "Cannot determine external_id for user"}, status=400)
 
     # Генерация токена через livekit.api
     token = (
@@ -84,8 +89,8 @@ def livekit_token_view(request):
             settings.LIVEKIT_API_KEY,
             settings.LIVEKIT_API_SECRET,
         )
-        .with_identity(user_identity)                  # уникальный identity
-        .with_name(user.username or user_identity) # имя (если есть)
+        .with_identity(identity)                  # уникальный identity
+        .with_name(identity) # имя (если есть)
         .with_grants(
             api.VideoGrants(
                 room_join=True,
@@ -153,3 +158,60 @@ def upload_logs(request):
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
 
+@login_required
+def moderator_room_view(request):
+    persons = Person.objects.all().order_by('full_name')
+    return render(request, 'proctoring/moderator_room.html', {'persons': persons})
+
+def get_person_identities(request):
+    persons = Person.objects.exclude(external_id__isnull=True).exclude(external_id='').values_list('external_id', flat=True)
+    return JsonResponse({"identities": list(persons)})
+
+@require_GET
+def get_logs_by_external_id(request):
+    external_id = request.GET.get('external_id')
+    if not external_id:
+        return JsonResponse({"error": "Не передан параметр external_id"}, status=400)
+
+    try:
+        person = Person.objects.get(external_id=external_id)
+    except Person.DoesNotExist:
+        return JsonResponse({"error": "Пользователь с таким external_id не найден"}, status=404)
+
+    if not person.user:
+        return JsonResponse({"error": "Пользователь не связан с User"}, status=400)
+
+    logs = QuizLog.objects.filter(user=person.user).order_by('-timestamp')
+
+    result = []
+    for log in logs:
+        s3_url = None
+        if log.video_chunk:
+            s3_url = f"https://storage.yandexcloud.net/rrvideos/{log.video_chunk.s3_key}"
+
+        result.append({
+            "id": log.id,
+            "event": log.event,
+            "detail": log.detail,
+            "timestamp": log.timestamp,
+            "created_at": log.created_at,
+            "session_id": log.session_id,
+            "video_chunk_id": log.video_chunk_id,
+            "video_chunk_url": s3_url,
+        })
+
+    return JsonResponse({"logs": result})
+
+
+def get_signed_users(request):
+    signed_quiz_persons = QuizPerson.objects.filter(signature__isnull=False).exclude(signature="")
+
+    result = []
+    for person in signed_quiz_persons:
+        result.append({
+            "external_id": person.external_id,
+            "full_name": f"{person.firstname} {person.lastname}",
+            "signature_data": person.signature_data,
+        })
+
+    return JsonResponse({"signed_users": result})

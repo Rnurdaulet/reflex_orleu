@@ -44,4 +44,5 @@ openpyxl
 pdfplumber
 boto3
 PyJWT
+django-cors-headers
 
