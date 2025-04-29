@@ -43,6 +43,6 @@ psycopg2-binary
 openpyxl
 pdfplumber
 boto3
-PyJWT
+livekit-api
 django-cors-headers
 
