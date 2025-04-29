@@ -250,3 +250,7 @@ def quiz_person_logs_view(request, external_id):
         'event_types': event_types,  # передаем отдельно
     })
 
+
+def device_test_view(request):
+    return render(request, 'device_test.html')
+

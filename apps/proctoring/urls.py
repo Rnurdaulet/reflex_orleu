@@ -1,7 +1,8 @@
 # urls.py
 from django.urls import path
 from .views import get_presigned_url, playback_view, livekit_token_view, upload_logs, moderator_room_view, \
-    get_person_identities, get_logs_by_external_id, get_signed_users, quiz_person_logs_view, quiz_person_list_view
+    get_person_identities, get_logs_by_external_id, get_signed_users, quiz_person_logs_view, quiz_person_list_view, \
+    device_test_view
 
 urlpatterns = [
     path('api/get-presigned-url/', get_presigned_url, name='get_presigned_url'),
@@ -16,5 +17,6 @@ urlpatterns = [
     path('api/signed-users/', get_signed_users, name='get_signed_users'),
     path('quiz-persons/', quiz_person_list_view, name='quiz_person_list'),
     path('quiz-logs/<str:external_id>/', quiz_person_logs_view, name='quiz_person_logs'),
+    path('device-test/', device_test_view, name='device_test'),
 
 ]

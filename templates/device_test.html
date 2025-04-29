@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Тест камеры и микрофона{% endblock %}
+
+{% block content %}
+    <div class="container my-5">
+        <h2>Тест камеры и микрофона</h2>
+        <p>Проверьте, что ваши устройства работают корректно и вы предоставили доступ браузеру.</p>
+
+        <div class="row my-4">
+            <div class="col-md-6">
+                <h5>Камера:</h5>
+                <div id="cameraStatus" class="alert alert-secondary">Проверка...</div>
+                <div id="videoContainer" style="display: none;">
+                    <h5>Предпросмотр камеры:</h5>
+                    <video id="testVideo" width="100%" height="auto" autoplay playsinline muted
+                           style="transform: scaleX(-1); border-radius: 8px; border: 1px solid #ccc;"></video>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h5>Микрофон:</h5>
+                <div id="microphoneStatus" class="alert alert-secondary">Проверка...</div>
+            </div>
+            <div id="micVisualizer" class="mt-4"
+                 style="height: 10px; background-color: #e9ecef; border-radius: 5px; overflow: hidden; display: none;">
+                <div id="micLevel" style="width: 100%; height: 100%;  background-color: #0d6efd;"></div>
+            </div>
+        </div>
+
+
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        async function checkDevices() {
+            const cameraStatus = document.getElementById('cameraStatus');
+            const microphoneStatus = document.getElementById('microphoneStatus');
+            const videoContainer = document.getElementById('videoContainer');
+            const testVideo = document.getElementById('testVideo');
+            const micVisualizer = document.getElementById('micVisualizer');
+            const micLevel = document.getElementById('micLevel');
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+                testVideo.srcObject = stream;
+                videoContainer.style.display = 'block';
+                micVisualizer.style.display = 'block';
+
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const hasCamera = devices.some(device => device.kind === 'videoinput');
+                const hasMicrophone = devices.some(device => device.kind === 'audioinput');
+
+                cameraStatus.className = hasCamera ? 'alert alert-success' : 'alert alert-danger';
+                cameraStatus.textContent = hasCamera ? 'Камера найдена и доступ разрешен' : 'Камера не найдена';
+
+                microphoneStatus.className = hasMicrophone ? 'alert alert-success' : 'alert alert-danger';
+                microphoneStatus.textContent = hasMicrophone ? 'Микрофон найден и доступ разрешен' : 'Микрофон не найден';
+
+                // 🔥 Проверка активности микрофона через AudioContext
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const audioSource = audioContext.createMediaStreamSource(stream);
+                const analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                audioSource.connect(analyser);
+
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+                function updateMicLevel() {
+                    analyser.getByteFrequencyData(dataArray);
+                    let sum = 0;
+                    for (let i = 0; i < dataArray.length; i++) {
+                        sum += dataArray[i];
+                    }
+                    const average = sum / dataArray.length;
+                    micLevel.style.width = `${Math.min(100, average)}%`;
+
+                    requestAnimationFrame(updateMicLevel);
+                }
+
+                updateMicLevel();
+
+            } catch (err) {
+                console.error('Ошибка доступа к устройствам:', err);
+
+                cameraStatus.className = 'alert alert-danger';
+                cameraStatus.textContent = 'Нет доступа к камере или камера отсутствует';
+
+                microphoneStatus.className = 'alert alert-danger';
+                microphoneStatus.textContent = 'Нет доступа к микрофону или микрофон отсутствует';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', checkDevices);
+    </script>
+{% endblock %}
