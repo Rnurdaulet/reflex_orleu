@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Логи участника{% endblock %}
+
+{% block content %}
+    <div class="container my-4">
+        <h2>Логи участника: {{ person.firstname }} {{ person.lastname }}</h2>
+        <div class="table-responsive mt-4">
+            <div class="mb-3">
+                <label for="eventFilter" class="form-label">Фильтр по типу события:</label>
+                <select id="eventFilter" class="form-select">
+                    <option value="">Все события</option>
+                    {% for event_type in event_types %}
+                        <option value="{{ event_type }}">{{ event_type }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <table class="table table-striped align-middle" id="logsTable">
+                <thead>
+                <tr>
+                    <th>Тип события</th>
+                    <th>Детали</th>
+                    <th>
+                        <a href="#" id="sortByTimestamp">Время <span id="sortIcon">▼</span></a>
+                    </th>
+                    <th>Видео</th>
+                </tr>
+                </thead>
+                <tbody id="logsTableBody">
+                {% for log in logs %}
+                    <tr data-event="{{ log.event|escapejs }}">
+                        <td>{{ log.event }}</td>
+                        <td>{{ log.detail|default:"-" }}</td>
+                        <td>{{ log.timestamp|date:"d.m.Y H:i:s" }}</td>
+                        <td>
+                            {% if log.video_chunk %}
+                                <button class="btn btn-sm btn-primary"
+                                        onclick="playVideo('https://storage.yandexcloud.net/rrvideos/{{ log.video_chunk.s3_key }}')">
+                                    Смотреть
+                                </button>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center">Логи отсутствуют</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+
+    <!-- Модалка для проигрывания видео -->
+    <div class="modal fade" id="videoModal" tabindex="-1" aria-labelledby="videoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="videoModalLabel">Просмотр видео</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <video id="videoPlayer" class="video-js vjs-default-skin" controls preload="auto" width="640px"
+                           height="480px">
+                        <source src="" type="video/mp4"/>
+                        Ваш браузер не поддерживает видео.
+                    </video>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <!-- Подключаем Video.js -->
+    <link href="https://vjs.zencdn.net/8.3.0/video-js.css" rel="stylesheet"/>
+    <script src="https://vjs.zencdn.net/8.3.0/video.min.js"></script>
+
+    <script>
+        function playVideo(videoUrl) {
+            const player = videojs('videoPlayer');
+            player.src({type: "video/mp4", src: videoUrl});
+            player.load();
+            player.play();
+
+            const modal = new bootstrap.Modal(document.getElementById('videoModal'));
+            modal.show();
+        }
+
+        // Остановить видео при закрытии модалки
+        document.getElementById('videoModal').addEventListener('hidden.bs.modal', function () {
+            const player = videojs('videoPlayer');
+            player.pause();
+            player.currentTime(0);
+        });
+        document.getElementById('eventFilter').addEventListener('change', function () {
+            const selectedEvent = this.value;
+            const rows = document.querySelectorAll('#logsTableBody tr');
+
+            rows.forEach(row => {
+                const eventType = row.getAttribute('data-event');
+                if (!selectedEvent || eventType === selectedEvent) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+
+        // Сортировка по дате
+        let sortAscending = false;
+        document.getElementById('sortByTimestamp').addEventListener('click', function (event) {
+            event.preventDefault();
+            const tbody = document.getElementById('logsTableBody');
+            const rows = Array.from(tbody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
+            rows.sort((a, b) => {
+                const dateA = new Date(a.children[2].textContent.trim().split('.').reverse().join('-'));
+                const dateB = new Date(b.children[2].textContent.trim().split('.').reverse().join('-'));
+                return sortAscending ? dateA - dateB : dateB - dateA;
+            });
+
+            tbody.innerHTML = '';
+            rows.forEach(row => tbody.appendChild(row));
+
+            sortAscending = !sortAscending;
+            document.getElementById('sortIcon').textContent = sortAscending ? '▲' : '▼';
+        });
+
+    </script>
+{% endblock %}

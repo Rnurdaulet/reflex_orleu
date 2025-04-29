@@ -2,7 +2,7 @@
 
 import time
 import boto3
-from django.http import JsonResponse
+from django.http import JsonResponse, Http404
 from django.utils.html import format_html
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET
@@ -50,7 +50,7 @@ def get_presigned_url(request):
 
 
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from .models import VideoChunk
 
 @login_required
@@ -215,3 +215,38 @@ def get_signed_users(request):
         })
 
     return JsonResponse({"signed_users": result})
+
+
+def quiz_person_list_view(request):
+    persons = QuizPerson.objects.all().order_by('lastname', 'firstname')
+    return render(request, 'proctoring/quiz_person_list.html', {
+        'persons': persons,
+    })
+
+def quiz_person_logs_view(request, external_id):
+    quiz_person = get_object_or_404(QuizPerson, external_id=external_id)
+    person = quiz_person.person
+    user = person.user
+
+    if not user:
+        raise Http404("Пользователь для данного участника не найден.")
+
+    logs = QuizLog.objects.filter(
+        user=user
+    ).exclude(
+        event='chunk_uploaded'
+    ).select_related('video_chunk').order_by('-timestamp')
+
+    # Вот здесь заранее вытащим типы событий
+    event_types = QuizLog.objects.filter(
+        user=user
+    ).exclude(
+        event='chunk_uploaded'
+    ).values_list('event', flat=True).distinct()
+
+    return render(request, 'proctoring/quiz_person_logs.html', {
+        'person': quiz_person,
+        'logs': logs,
+        'event_types': event_types,  # передаем отдельно
+    })
+
