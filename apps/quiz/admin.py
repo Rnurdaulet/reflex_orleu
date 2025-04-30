@@ -60,8 +60,8 @@ class QuizConfigAdmin(ModelAdmin):
 class ScenarioAdmin(ModelAdmin):
     list_display = ("external_id", "name_ru")
     filter_horizontal = ("questions",)
-    # formfield_overrides = {
-    #     models.TextField: {
-    #         "widget": WysiwygWidget,
-    #     }
-    # }
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        if db_field.name in ("situation_ru", "situation_kk", "situation_en", "sp_ru", "sp_kk", "sp_en"):
+            kwargs["widget"] = WysiwygWidget()
+        return super().formfield_for_dbfield(db_field, request, **kwargs)

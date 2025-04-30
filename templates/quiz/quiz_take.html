@@ -169,9 +169,14 @@
                                 <span class="lang-en">{{ scenario.name_en }}</span>
                             </h3>
                             <p class="fst-italic">
-                                <span class="lang-ru active">{{ scenario.situation_ru }}</span>
-                                <span class="lang-kk">{{ scenario.situation_kk }}</span>
-                                <span class="lang-en">{{ scenario.situation_en }}</span>
+                                <span class="lang-ru active">{{ scenario.situation_ru|safe }}</span>
+                                <span class="lang-kk">{{ scenario.situation_kk|safe }}</span>
+                                <span class="lang-en">{{ scenario.situation_en|safe }}</span>
+                            </p>
+                            <p class="fst-italic">
+                                <span class="lang-ru active">{{ scenario.sp_ru|safe }}</span>
+                                <span class="lang-kk">{{ scenario.sp_kk|safe }}</span>
+                                <span class="lang-en">{{ scenario.sp_en|safe }}</span>
                             </p>
 
                             {% for q in scenario.questions.all %}

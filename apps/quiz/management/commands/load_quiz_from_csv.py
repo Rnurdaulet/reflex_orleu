@@ -12,7 +12,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         filepath = options['filepath']
         with open(filepath, encoding='utf-8') as file:
-            reader = csv.DictReader(file)
+            reader = csv.DictReader(file,delimiter=';')
             created_q = 0
             created_a = 0
 
