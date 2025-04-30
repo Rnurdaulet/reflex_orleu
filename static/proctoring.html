@@ -17,10 +17,10 @@
             transform: scaleX(-1);
         }
 
-        #log, #checklist {
+        #checklist {
             position: absolute;
             left: 0;
-            bottom: 60px; /* отступ от низа окна */
+            bottom: 0;
             background: rgba(0, 0, 0, 0.3);
             color: white;
             padding: 8px;
@@ -29,212 +29,233 @@
             max-width: 320px;
             z-index: 999;
         }
-
-        #log {
-            top: 0;
-            bottom: 210px;
-        }
-
-        #checklist {
-            bottom: 0;
-        }
-
     </style>
 </head>
 <body>
 <video id="video" autoplay playsinline width="320" height="240"></video>
 <canvas id="output" width="320" height="240"></canvas>
-<div id="log">Загрузка...</div>
-<div id="checklist">⏳ Чек-лист загружается...</div>
+<div id="checklist">Загрузка...</div>
 
 <script>
-    window.addEventListener('message', function (event) {
-        if (event.data && event.data.type === "SET_EXTERNAL_ID") {
-            const externalId = event.data.external_id;
-            console.log("Получен external_id:", externalId);
+    const CONFIG = {
+        FACE_SCALE_MIN: 30,
+        FACE_SCALE_MAX: 80,
+        RATIO_MIN: 0.61,
+        HEAD_TILT_MAX: -1,
+        VIDEO_WIDTH: 320,
+        VIDEO_HEIGHT: 240,
+        THROTTLE_INTERVAL: 100,
+        VIOLATION_THRESHOLD_MS: 1000,
+    };
 
-            // можешь тут сохранить, отобразить или использовать
-            window.currentExternalId = externalId;
+    const CHECKLIST_MESSAGES = {
+        camera_denied: "🚫 Нет доступа к камере",
+        no_face: "❌ Лицо не найдено",
+        multi_face: "❌ Несколько лиц в кадре",
+        distance: "❌ Расстояние",
+        rotation: "❌ Поворот головы",
+        tilt: "❌ Наклон вниз",
+        all_good: "✅",
+    };
 
-            // например, выводим в лог
-            const logElement = document.getElementById('log');
-            if (logElement) {
-                logElement.textContent = `ID пользователя: ${externalId}`;
-            }
+    let currentExternalId = "неизвестный пользователь";
+    let detector = null;
+    let lastChecklistState = "";
+
+    const lastViolationTimestamps = {
+        distance: null,
+        rotation: null,
+        tilt: null,
+        no_face: null,
+        multi_face: null,
+    };
+
+    const videoElement = document.getElementById("video");
+    const canvasElement = document.getElementById("output");
+    const checklistElement = document.getElementById("checklist");
+    const ctx = canvasElement.getContext("2d", {willReadFrequently: true});
+
+    window.addEventListener("message", (event) => {
+        if (event.origin !== window.location.origin) return;
+        if (event.data?.type === "SET_EXTERNAL_ID" && event.data.external_id) {
+            currentExternalId = event.data.external_id;
         }
     });
 
-    function updateChecklist({faceScale, ratio, headTiltDown, multiFace}) {
-        const checks = [];
-
-        let violations = [];
-
-        if (faceScale < 30 || faceScale > 80) {
-            violations.push("badDistance");
-            checks.push("❌Расстояние");
-        } else {
-            checks.push("✅Расстояние");
-        }
-
-        if (ratio < 0.61) {
-            violations.push("badRotation");
-            checks.push("❌Поворот");
-        } else {
-            checks.push("✅Поворот");
-        }
-
-        if (headTiltDown > -1) {
-            violations.push("badTilt");
-            checks.push("❌Наклон");
-        } else {
-            checks.push("✅Наклон");
-        }
-
-        if (multiFace) {
-            violations.push("multiFace");
-            checks.push("❌Несколько лиц в кадре");
-        } else {
-            checks.push("✅Одно лицо в кадре");
-        }
-
-        // --- Пишем на страницу ---
-        document.getElementById("checklist").innerHTML = checks.join("<br>");
-
-        // --- Отправляем в родителя ---
-        window.parent.postMessage({
-            type: "checklist_update",
-            data: {
-                timestamp: new Date().toISOString(),
-                violations,
+    function checkViolation(key, condition) {
+        const now = Date.now();
+        if (condition) {
+            if (!lastViolationTimestamps[key]) {
+                lastViolationTimestamps[key] = now;
             }
-        }, "*");
+            return (now - lastViolationTimestamps[key]) >= CONFIG.VIOLATION_THRESHOLD_MS;
+        } else {
+            lastViolationTimestamps[key] = null;
+            return false;
+        }
     }
 
-
-    console.clear();
-    const log = (msg) => {
-        document.getElementById('log').textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-        console.log(msg);
-    };
-
-    async function setupCamera() {
-        const video = document.getElementById('video');
+    async function initializeCamera() {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({video: {width: 320, height: 240}});
-            video.srcObject = stream;
-            return new Promise(resolve => {
-                video.onloadedmetadata = () => {
-                    log("Камера инициализирована");
-                    resolve(video);
-                };
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {width: CONFIG.VIDEO_WIDTH, height: CONFIG.VIDEO_HEIGHT},
+            });
+            videoElement.srcObject = stream;
+            return new Promise((resolve) => {
+                videoElement.onloadedmetadata = () => resolve(videoElement);
             });
         } catch (e) {
-            log("Ошибка доступа к камере");
-            console.error("Camera error:", e);
+            checklistElement.innerHTML = CHECKLIST_MESSAGES.camera_denied;
+            checklistElement.style.backgroundColor = "rgba(255, 0, 0, 0.3)";
             throw e;
         }
     }
 
-    function isBlackFrame(video, ctx) {
-        const frame = ctx.getImageData(0, 0, video.videoWidth, video.videoHeight);
-        const data = frame.data;
-        let sum = 0;
-        for (let i = 0; i < data.length; i += 4) {
-            const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
-            sum += brightness;
+    async function initializeModel() {
+        if (!tf.env().getBool("WEBGL_VERSION")) {
+            await tf.setBackend("cpu");
+        } else {
+            await tf.setBackend("webgl");
         }
-        const avg = sum / (data.length / 4);
-        return avg < 15;
+        await tf.ready();
+        detector = await faceLandmarksDetection.createDetector(
+            faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
+            {runtime: "tfjs", maxFaces: 3, refineLandmarks: false}
+        );
     }
 
     async function run() {
-        try {
-            const video = await setupCamera();
-            await video.play();
+        await initializeCamera();
+        await videoElement.play();
+        await initializeModel();
 
-            const canvas = document.getElementById('output');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
+        let lastProcessed = 0;
+        let frameCount = 0;
+        let lastTime = performance.now();
 
-            log("Инициализация TensorFlow...");
-            await tf.setBackend('webgl');
-            await tf.ready();
-            log("TensorFlow готов");
+        const detect = async () => {
+            const now = performance.now();
+            if (now - lastProcessed < CONFIG.THROTTLE_INTERVAL) {
+                return requestAnimationFrame(detect);
+            }
+            lastProcessed = now;
+            frameCount++;
 
-            log("Загрузка модели...");
-            const detector = await faceLandmarksDetection.createDetector(
-                faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
-                {
-                    runtime: 'tfjs',
-                    maxFaces: 3,
-                    refineLandmarks: true
+            if (now - lastTime >= 1000) {
+                const fps = (frameCount * 1000) / (now - lastTime);
+                console.log(`FPS: ${fps.toFixed(1)}`);
+                frameCount = 0;
+                lastTime = now;
+            }
+
+            ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            ctx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+            ctx.save();
+            ctx.scale(-1, 1);
+            ctx.translate(-canvasElement.width, 0);
+
+            const text = `${new Date().toLocaleTimeString()} | ID: ${currentExternalId}`;
+            ctx.font = "12px monospace";
+
+            const padding = 6;
+            const textMetrics = ctx.measureText(text);
+            const textWidth = textMetrics.width;
+            const bgHeight = 20;
+
+            const x = canvasElement.width - textWidth - padding * 2;
+            const y = 5;
+
+            ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+            ctx.fillRect(x, y, textWidth + padding * 2, bgHeight);
+
+            ctx.fillStyle = "white";
+            ctx.fillText(text, x + padding, y + 14);
+
+            ctx.restore();
+
+            let violations = [];
+
+            try {
+                const faces = await detector.estimateFaces(videoElement);
+
+                if (checkViolation("no_face", !faces.length)) {
+                    violations.push(CHECKLIST_MESSAGES.no_face);
                 }
-            );
-            log("Модель загружена");
 
-            const detect = async () => {
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                if (isBlackFrame(video, ctx)) {
-                    log("Чёрный экран");
-                    return requestAnimationFrame(detect);
+                if (checkViolation("multi_face", faces.length > 1)) {
+                    violations.push(CHECKLIST_MESSAGES.multi_face);
                 }
 
-                const faces = await detector.estimateFaces(video);
-                let faceScale = 0;
-                let headTiltDown = 0;
-                let ratio = 1;
+                if (faces.length === 1) {
+                    const face = faces[0];
+                    const landmarks = face.keypoints;
+                    const leftEye = landmarks.find((p) => p.name === "leftEye");
+                    const rightEye = landmarks.find((p) => p.name === "rightEye");
+                    const leftEar = landmarks[234];
+                    const rightEar = landmarks[454];
 
-                if (!faces.length) {
-                    log("Лицо не найдено");
-                    updateChecklist({faceScale, ratio, headTiltDown, multiFace: false});
-                    return requestAnimationFrame(detect);
+                    if (leftEye && rightEye && leftEar && rightEar) {
+                        const faceScale = Math.abs(rightEye.x - leftEye.x);
+                        const avgEyeY = (leftEye.y + rightEye.y) / 2;
+                        const avgEarY = (leftEar.y + rightEar.y) / 2;
+                        const headTiltDown = avgEyeY - avgEarY;
+                        const faceWidth = Math.abs(rightEar.x - leftEar.x);
+                        const ratio = faceWidth ? faceScale / faceWidth : 1;
+
+
+                        if (checkViolation("rotation", ratio < CONFIG.RATIO_MIN)) {
+                            violations.push(CHECKLIST_MESSAGES.rotation);
+                        }
+                        if (checkViolation("distance", faceScale < CONFIG.FACE_SCALE_MIN || faceScale > CONFIG.FACE_SCALE_MAX)) {
+                            violations.push(CHECKLIST_MESSAGES.distance);
+                        }
+                        if (checkViolation("tilt", headTiltDown > CONFIG.HEAD_TILT_MAX)) {
+                            violations.push(CHECKLIST_MESSAGES.tilt);
+                        }
+                    }
                 }
-
-                if (faces.length > 1) {
-                    log(`Обнаружено несколько лиц: ${faces.length}`);
-                    updateChecklist({faceScale, ratio, headTiltDown, multiFace: true});
-                    return requestAnimationFrame(detect);
+            } catch (e) {
+                if (checkViolation("no_face", true)) {
+                    violations.push(CHECKLIST_MESSAGES.no_face);
                 }
+            }
 
+            const newChecklist = violations.length ? violations.join("<br>") : CHECKLIST_MESSAGES.all_good;
 
-                const face = faces[0];
-                const landmarks = face.keypoints;
-                const leftEye = landmarks.find(p => p.name === 'leftEye') || landmarks[133];
-                const rightEye = landmarks.find(p => p.name === 'rightEye') || landmarks[362];
-                const leftEar = landmarks[234];
-                const rightEar = landmarks[454];
+            if (newChecklist !== lastChecklistState) {
+                checklistElement.innerHTML = newChecklist;
+                checklistElement.style.backgroundColor = violations.length
+                    ? "rgba(255, 0, 0, 0.3)"
+                    : "rgba(0, 128, 0, 0.3)";
+                lastChecklistState = newChecklist;
 
-                const eyeDist = Math.abs(rightEye.x - leftEye.x);
-                faceScale = eyeDist;
+                window.parent.postMessage({
+                    type: "checklist_update",
+                    data: {
+                        timestamp: new Date().toISOString(),
+                        violations,
+                    },
+                }, "*");
+            }
 
-                const avgEyeY = (leftEye.y + rightEye.y) / 2;
-                const avgEarY = (leftEar.y + rightEar.y) / 2;
-                headTiltDown = avgEyeY - avgEarY;
+            requestAnimationFrame(detect);
+        };
 
-                const faceWidth = Math.abs(rightEar.x - leftEar.x);
-                ratio = eyeDist / faceWidth;
-                updateChecklist({faceScale, ratio, headTiltDown, multiFace: false});
-
-                log(`✅ ID: ${window.currentExternalId || "неизвестный пользователь"}`);
-
-                requestAnimationFrame(detect);
-            };
-
-            detect();
-        } catch (e) {
-            log("Ошибка запуска");
-            console.error("Ошибка в run():", e);
-        }
+        detect();
     }
 
+    window.addEventListener("beforeunload", () => {
+        const stream = videoElement.srcObject;
+        if (stream && stream.getTracks) {
+            stream.getTracks().forEach((track) => track.stop());
+        }
+        if (detector) {
+            detector.dispose();
+        }
+        tf.disposeVariables();
+    });
+
     run();
-    window.parent.postMessage({
-        type: "violation",
-        data: {reason: "no_face", duration: 3}
-    }, "*");
-
-
 </script>
 </body>
 </html>
