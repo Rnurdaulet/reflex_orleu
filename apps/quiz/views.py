@@ -263,6 +263,16 @@ def quiz_submitted_view(request):
     return render(request, "quiz/quiz_submitted.html")
 
 
+GENDER_MAPPING = {
+    "male": 1,
+    "female": 2,
+}
+LANGUAGE_MAPPING = {
+    "english": 1,
+    "kazakh": 2,
+    "russian": 3,
+}
+
 @staff_member_required
 @login_required
 def quiz_results_view(request):
@@ -283,13 +293,13 @@ def quiz_results_view(request):
         ext_id = qp.external_id if qp else ""
         fn = qp.firstname if qp else ""
         ln = qp.lastname if qp else ""
-        gender = qp.gender if qp else ""
+        gender = GENDER_MAPPING.get(qp.gender, "") if qp else ""
         age = qp.age if qp else ""
         exp = qp.years_experience if qp else ""
         texp = qp.teaching_experience if qp else ""
         edu = qp.education_id if qp else ""
         reg = qp.region_id if qp else ""
-        lang = qp.language if qp else ""
+        lang = LANGUAGE_MAPPING.get(qp.language, "") if qp else ""
         # ответы: {question_id: external_id}
         resp_map = {
             r.question_id: (r.answer.external_id if r.answer else "")
@@ -333,7 +343,7 @@ def export_results_csv(request):
     # заголовок
     header = [
                  "Id", "First name", "Last name",
-                 "Gender", "Age", "YearsExperience","TeachingExperience"
+                 "Gender", "Age", "YearsExperience","TeachingExperience",
                  "Education", "Region","Language"
              ] + [f"Q{i + 1}" for i in range(len(questions))]
     writer.writerow(header)
@@ -343,12 +353,13 @@ def export_results_csv(request):
         ext_id = qp.external_id if qp else ""
         fn = qp.firstname if qp else ""
         ln = qp.lastname if qp else ""
-        gender = qp.gender if qp else ""
+        gender = GENDER_MAPPING.get(qp.gender, "") if qp else ""
         age = qp.age if qp else ""
         exp = qp.years_experience if qp else ""
+        texp = qp.teaching_experience if qp else ""
         edu = qp.education_id if qp else ""
         reg = qp.region_id if qp else ""
-        lang = qp.language if qp else ""
+        lang = LANGUAGE_MAPPING.get(qp.language, "") if qp else ""
         resp_map = {
             r.question_id: (r.answer.external_id if r.answer else "")
             for r in sess.responses.all()
@@ -356,7 +367,7 @@ def export_results_csv(request):
         answers = [resp_map.get(q.id, "") for q in questions]
 
         writer.writerow([
-            ext_id, fn, ln, gender, age, exp, edu, reg,lang, *answers
+            ext_id, fn, ln, gender, age, exp,texp, edu, reg,lang, *answers
         ])
 
     return response
@@ -376,8 +387,8 @@ def export_results_excel(request):
     # заголовок
     ws.append([
                   "Id", "First name", "Last name",
-                  "Gender", "Age", "YearsExperience",
-                  "Education", "Region"
+                  "Gender", "Age", "YearsExperience", "TeachingExperience",
+                  "Education", "Region", "Language"
               ] + [f"Q{i + 1}" for i in range(len(questions))])
 
     for sess in sessions:
@@ -385,19 +396,20 @@ def export_results_excel(request):
         ext_id = qp.external_id if qp else ""
         fn = qp.firstname if qp else ""
         ln = qp.lastname if qp else ""
-        gender = qp.gender if qp else ""
+        gender = GENDER_MAPPING.get(qp.gender, "") if qp else ""
         age = qp.age if qp else ""
         exp = qp.years_experience if qp else ""
         texp = qp.teaching_experience if qp else ""
         edu = qp.education_id if qp else ""
         reg = qp.region_id if qp else ""
+        lang = LANGUAGE_MAPPING.get(qp.language, "") if qp else ""
         resp_map = {
             r.question_id: (r.answer.external_id if r.answer else "")
             for r in sess.responses.all()
         }
         answers = [resp_map.get(q.id, "") for q in questions]
 
-        ws.append([ext_id, fn, ln, gender, age, exp,texp, edu, reg, *answers])
+        ws.append([ext_id, fn, ln, gender, age, exp,texp, edu, reg,lang, *answers])
 
     stream = io.BytesIO()
     wb.save(stream)
