@@ -253,20 +253,54 @@ async function startProctoringStream() {
     startChunkRecording(combinedStream);
 }
 
+// function startChunkRecording(stream) {
+//     const recorder = new MediaRecorder(stream, {mimeType: 'video/webm'});
+//
+//     recorder.ondataavailable = async (e) => {
+//         console.log('📦 Data available:', e.data.size);
+//         if (e.data.size > 0) {
+//             await uploadChunk(e.data);
+//         }
+//     };
+//
+//     recorder.start(20000); // каждый чанк 20 сек
+//     console.log('🔴 Запись чанков началась');
+//     isRecording = true;
+// }
 function startChunkRecording(stream) {
-    const recorder = new MediaRecorder(stream, {mimeType: 'video/webm'});
+    async function recordChunk(index) {
+        const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+        let chunks = [];
 
-    recorder.ondataavailable = async (e) => {
-        console.log('📦 Data available:', e.data.size);
-        if (e.data.size > 0) {
-            await uploadChunk(e.data);
-        }
-    };
+        recorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+                chunks.push(e.data);
+            }
+        };
 
-    recorder.start(20000); // каждый чанк 20 сек
-    console.log('🔴 Запись чанков началась');
-    isRecording = true;
+        recorder.onstop = async () => {
+            const blob = new Blob(chunks, { type: 'video/webm' });
+            await uploadChunk(blob);
+            Logger.setCurrentChunkIndex(index);
+            Logger.log('chunk_uploaded', `Залит чанк #${index}`);
+
+            // Запускаем следующий чанк
+            recordChunk(index + 1);
+        };
+
+        recorder.start();
+        console.log(`📹 Чанк #${index} — запись началась`);
+
+        setTimeout(() => {
+            if (recorder.state === 'recording') {
+                recorder.stop();
+            }
+        }, 20000);
+    }
+
+    recordChunk(chunkIndex);
 }
+
 
 
 async function uploadChunk(blob) {
