@@ -351,38 +351,58 @@ window.addEventListener('focus', () => Logger.log('focus', 'Вернулись �
 
 
 const violationTimers = {
-    badDistance: 0,
-    badRotation: 0,
-    badTilt: 0,
-    multiFace: 0,
+    distance: 0,
+    rotation: 0,
+    tilt: 0,
+    multi_face: 0,
+    no_face: 0,
+    camera_denied: 0,
 };
 
-const VIOLATION_THRESHOLD_MS = 5000; // 5 секунд
+const TEXT_TO_KEY = {
+    "❌ Расстояние": "distance",
+    "❌ Поворот головы": "rotation",
+    "❌ Наклон вниз": "tilt",
+    "❌ Несколько лиц в кадре": "multi_face",
+    "❌ Лицо не найдено": "no_face",
+    "🚫 Нет доступа к камере": "camera_denied"
+};
+
+const VIOLATION_THRESHOLD_MS = 2000; // 2 секунды
 let lastViolationCheck = Date.now();
 
-// слушаем сообщения из iframe
 window.addEventListener('message', function (event) {
-    const {type, data} = event.data || {};
+    const { type, data } = event.data || {};
 
-    if (type === 'checklist_update') {
+    if (type === 'checklist_update' && Array.isArray(data.violations)) {
         const now = Date.now();
         const elapsed = now - lastViolationCheck;
         lastViolationCheck = now;
 
-        // Для всех известных нарушений
-        for (let key of Object.keys(violationTimers)) {
-            if (data.violations.includes(key)) {
-                violationTimers[key] += elapsed;
-            } else {
+        const activeKeys = new Set();
+
+        for (const text of data.violations) {
+            const key = TEXT_TO_KEY[text];
+            if (!key) continue;
+
+            activeKeys.add(key);
+
+            if (!violationTimers[key]) violationTimers[key] = 0;
+            violationTimers[key] += elapsed;
+
+            if (violationTimers[key] >= VIOLATION_THRESHOLD_MS) {
+                Logger.log('violation', `Нарушение: ${text} >2 сек`);
                 violationTimers[key] = 0;
             }
+        }
 
-            // Проверяем — если накопилось больше 5 секунд
-            if (violationTimers[key] >= VIOLATION_THRESHOLD_MS) {
-                Logger.log('violation', `Нарушение: ${key} >5 секунд`);
-                violationTimers[key] = 0; // сбрасываем
+        // Обнуляем неактивные таймеры
+        for (const key of Object.keys(violationTimers)) {
+            if (!activeKeys.has(key)) {
+                violationTimers[key] = 0;
             }
         }
     }
 });
+
 
