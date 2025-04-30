@@ -15,8 +15,15 @@
 
         #sidebar {
             position: sticky;
-            top: 6rem;
-            max-height: 100vh;
+            top: 26rem;
+            max-height: 80vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        #sidebar-proctor {
+            position: sticky;
+            top: 4rem;
             overflow-y: auto;
             overflow-x: hidden;
         }
@@ -45,6 +52,8 @@
         }
 
         iframe {
+                transform: scale(0.8);      /* масштабировать */
+    transform-origin: top left; /* откуда масштаб */
             width: 320px;
             height: 240px;
             border: none;
@@ -141,16 +150,6 @@
                                 <span class="lang-kk">Бүкіл тестке {{ config.test_duration_minutes }} минут беріледі.</span>
                                 <span class="lang-en">You have {{ config.test_duration_minutes }} minutes to complete the entire test.</span>
                             </li>
-                            <li>
-                                <span class="lang-ru active">Автоматическая отправка ответов произойдёт за 15 секунд до окончания времени.</span>
-                                <span class="lang-kk">Уақыт бітуге 15 секунд қалғанда жауаптар автоматты түрде жіберіледі.</span>
-                                <span class="lang-en">Answers will be automatically submitted 15 seconds before the time is up.</span>
-                            </li>
-                            <li>
-                                <span class="lang-ru active">Навигация — через боковую панель.</span>
-                                <span class="lang-kk">Навигация — сол жақ панель арқылы.</span>
-                                <span class="lang-en">Use the sidebar to navigate.</span>
-                            </li>
                         </ul>
 
                         <button type="button" class="btn btn-primary" id="start-btn">
@@ -168,11 +167,17 @@
                                 <span class="lang-kk">{{ scenario.name_kk }}</span>
                                 <span class="lang-en">{{ scenario.name_en }}</span>
                             </h3>
+                            <span class="lang-ru active">Ситуация:</span>
+                            <span class="lang-kk">Жағдаят:</span>
+                            <span class="lang-en">Situation:</span>
                             <p class="fst-italic">
                                 <span class="lang-ru active">{{ scenario.situation_ru|safe }}</span>
                                 <span class="lang-kk">{{ scenario.situation_kk|safe }}</span>
                                 <span class="lang-en">{{ scenario.situation_en|safe }}</span>
                             </p>
+                            <span class="lang-ru active">Конкретная проблема:</span>
+                            <span class="lang-kk">Нақты мәселе:</span>
+                            <span class="lang-en">Specific problem:</span>
                             <p class="fst-italic">
                                 <span class="lang-ru active">{{ scenario.sp_ru|safe }}</span>
                                 <span class="lang-kk">{{ scenario.sp_kk|safe }}</span>
@@ -240,21 +245,22 @@
 
         <!-- Боковая панель -->
         <aside class="col-lg-3 mb-4">
+            <div id="sidebar-proctor" class="">
+                <iframe
+                        id="proctorFrame"
+                        src="{% static '/proctoring.html' %}"
+                        allow="camera; microphone">
+                </iframe>
+                <canvas id="output" width="280" height="240"></canvas>
+            </div>
             <nav id="sidebar" class="list-group">
-                <div class="">
-                    <iframe
-                            id="proctorFrame"
-                            src="{% static '/proctoring.html' %}"
-                            allow="camera; microphone">
-                    </iframe>
-                    <canvas id="output" width="280" height="240"></canvas>
-                </div>
+
                 <a href="#" class="list-group-item list-group-item-action" data-step="0">Приветствие</a>
                 {% for scenario in scenarios %}
                     <a href="#" class="list-group-item list-group-item-action" data-step="{{ forloop.counter }}">
-                        <span class="lang-ru active">{{ scenario.name_ru }}</span>
-                        <span class="lang-kk">{{ scenario.name_kk }}</span>
-                        <span class="lang-en">{{ scenario.name_en }}</span>
+                        <span class="lang-ru active">СЦЕНАРИЙ {{ scenario.id }}</span>
+                        <span class="lang-kk">{{ scenario.id }} СЦЕНАРИЙ</span>
+                        <span class="lang-en">SCENARIO {{ scenario.id }}</span>
                         <div class="progress mt-1">
                             <div class="progress-bar"
                                  role="progressbar"
