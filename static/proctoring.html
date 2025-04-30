@@ -71,30 +71,30 @@
 
         if (faceScale < 30 || faceScale > 80) {
             violations.push("badDistance");
-            checks.push("❌ Расстояние неправильное");
+            checks.push("❌Расстояние");
         } else {
-            checks.push("✅ Расстояние нормальное");
+            checks.push("✅Расстояние");
         }
 
-        if (ratio < 0.606) {
+        if (ratio < 0.61) {
             violations.push("badRotation");
-            checks.push("❌ Поворот головы");
+            checks.push("❌Поворот");
         } else {
-            checks.push("✅ Поворот головы нормальный");
+            checks.push("✅Поворот");
         }
 
         if (headTiltDown > -1) {
             violations.push("badTilt");
-            checks.push("❌ Наклон головы");
+            checks.push("❌Наклон");
         } else {
-            checks.push("✅ Положение головы нормальное");
+            checks.push("✅Наклон");
         }
 
         if (multiFace) {
             violations.push("multiFace");
-            checks.push("❗ Несколько лиц в кадре");
+            checks.push("❌Несколько лиц в кадре");
         } else {
-            checks.push("✅ Одно лицо в кадре");
+            checks.push("✅Одно лицо в кадре");
         }
 
         // --- Пишем на страницу ---
