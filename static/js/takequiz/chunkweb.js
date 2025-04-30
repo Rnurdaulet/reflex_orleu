@@ -150,69 +150,66 @@ async function startProctoringStream() {
         const externalId = exId.textContent || 'N/A';
         const checklistText = checklist?.textContent || '';
 
+        // === Верхний правый угол: Время и ID ===
+        const timeStr = new Date().toLocaleTimeString();
+        const text = `${timeStr} | ID: ${externalId}`;
 
-    // === Верхняя панель ===
-    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-    ctx.fillRect(0, 0, canvas.width, 40);
+        ctx.save();
+        ctx.font = "12px monospace";
+        const padding = 6;
+        const textWidth = ctx.measureText(text).width;
+        const bgHeight = 20;
 
-    ctx.font = "12px monospace";
-    ctx.fillStyle = "lime";
-    ctx.textBaseline = "top";
-    const timeStr = new Date().toLocaleTimeString();
-    ctx.fillText(`[${timeStr}] ✅ ID: ${externalId}`, 10, 10);
+        const x = canvas.width - textWidth - padding * 2;
+        const y = 5;
 
-    // === Нижняя панель для чек-листа ===
-    ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-    ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
+        ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+        ctx.fillRect(x, y, textWidth + padding * 2, bgHeight);
 
-    ctx.font = "11px monospace";
-    ctx.textBaseline = "top";
+        ctx.fillStyle = "white";
+        ctx.fillText(text, x + padding, y + 14 - 6); // по центру
+        ctx.restore();
 
-    const padding = 10;
-    const lineHeight = 14;
-    let x = padding;
-    let y = canvas.height - 50;
+        // === Нижняя панель: чеклист ===
 
-    // Разбиваем checklistText на отдельные фразы
-    const checklistItems = checklistText.replace(/<br\s*\/?>/gi, '\n').split('\n').filter(Boolean);
+        ctx.font = "11px monospace";
+        ctx.textBaseline = "top";
 
-    checklistItems.forEach((item) => {
-        const cleanItem = item.trim();
-        if (!cleanItem) return;
+        const lineHeight = 14;
+        let cx = padding;
+        let cy = canvas.height - 20;
 
-        ctx.fillStyle = cleanItem.includes('❌') ? "red" :
-                        cleanItem.includes('✅') ? "lime" : "yellow";
+        const checklistItems = checklistText.replace(/<br\s*\/?>/gi, '\n').split('\n').filter(Boolean);
 
-        const words = cleanItem.split(' ');
+        checklistItems.forEach((item) => {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+            const cleanItem = item.trim();
+            if (!cleanItem) return;
+            ctx.fillStyle = cleanItem.includes('❌') ? "rgba(255, 0, 0, 0.5)" :
+                cleanItem.includes('✅') ? "rgba(0, 128, 0, 0.0)" : "rgba(255, 255, 255, 0.0)";
+            ctx.fillRect(0, canvas.height - 30, canvas.width, 30);
+                    ctx.fillStyle = "white";
+            const words = cleanItem.split(' ');
 
-        for (const word of words) {
-            const measure = ctx.measureText(word + ' ');
-            if (x + measure.width > canvas.width - padding) {
-                x = padding;
-                y += lineHeight;
+            for (const word of words) {
+                const measure = ctx.measureText(word + ' ');
+                if (cx + measure.width > canvas.width - padding) {
+                    cx = padding;
+                    cy += lineHeight;
+                }
+                ctx.fillText(word + ' ', cx, cy);
+                cx += measure.width;
             }
-            ctx.fillText(word + ' ', x, y);
-            x += measure.width;
-        }
-    });
+        });
 
-    // === Рамка ===
-    if (violation) {
-        ctx.strokeStyle = "red";
-        ctx.lineWidth = 5;
+        // === Рамка ===
+        ctx.lineWidth = violation ? 5 : 2;
+        ctx.strokeStyle = violation ? "red" : "lime";
         ctx.strokeRect(0, 0, canvas.width, canvas.height);
-    } else {
-        ctx.strokeStyle = "lime";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+        requestAnimationFrame(draw);
     }
-
-    requestAnimationFrame(draw);
-    }
-
-
     draw();
-
     const canvasStream = canvas.captureStream(10); // 10 FPS
     const combinedStream = new MediaStream([
         ...canvasStream.getVideoTracks(),
@@ -372,7 +369,7 @@ const VIOLATION_THRESHOLD_MS = 2000; // 2 секунды
 let lastViolationCheck = Date.now();
 
 window.addEventListener('message', function (event) {
-    const { type, data } = event.data || {};
+    const {type, data} = event.data || {};
 
     if (type === 'checklist_update' && Array.isArray(data.violations)) {
         const now = Date.now();
