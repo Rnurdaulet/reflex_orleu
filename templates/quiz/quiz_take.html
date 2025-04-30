@@ -180,7 +180,7 @@
                             </p>
 
                             {% for q in scenario.questions.all %}
-                                <div class="mb-3">
+                                <div class="mb-5">
                                     <h5>
                                         {{ forloop.parentloop.counter }}.{{ forloop.counter }}
                                         <span class="lang-ru active">{{ q.name_ru }}</span>
@@ -235,8 +235,6 @@
                         </div>
                     {% endfor %}
                 </div>
-
-
             </form>
         </main>
 
