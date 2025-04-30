@@ -13,20 +13,22 @@
             scroll-margin-top: 6rem;
         }
 
-        #sidebar {
+        #sidebar-proctor {
             position: sticky;
-            top: 26rem;
-            max-height: 80vh;
+            top: 4rem;
+            height: 17rem;
             overflow-y: auto;
             overflow-x: hidden;
         }
 
-        #sidebar-proctor {
+        #sidebar {
             position: sticky;
-            top: 4rem;
+            top: calc(4rem + 17rem);
+            max-height: calc(100vh - 4rem - 20rem);
             overflow-y: auto;
             overflow-x: hidden;
         }
+
 
         .timer {
             font-size: 1.25rem;
@@ -52,12 +54,11 @@
         }
 
         iframe {
-                transform: scale(0.9);      /* масштабировать */
-    transform-origin: top left; /* откуда масштаб */
+            transform: scale(0.85); /* масштабировать */
+            transform-origin: top left; /* откуда масштаб */
             width: 320px;
             height: 240px;
             border: none;
-            margin-top: 1rem;
         }
     </style>
     <style>
@@ -254,7 +255,6 @@
                 <canvas id="output" width="280" height="240"></canvas>
             </div>
             <nav id="sidebar" class="list-group">
-
                 <a href="#" class="list-group-item list-group-item-action" data-step="0">Приветствие</a>
                 {% for scenario in scenarios %}
                     <a href="#" class="list-group-item list-group-item-action" data-step="{{ forloop.counter }}">
