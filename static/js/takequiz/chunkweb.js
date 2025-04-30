@@ -188,7 +188,7 @@ async function startProctoringStream() {
             ctx.fillStyle = cleanItem.includes('❌') ? "rgba(255, 0, 0, 0.5)" :
                 cleanItem.includes('✅') ? "rgba(0, 128, 0, 0.0)" : "rgba(255, 255, 255, 0.0)";
             ctx.fillRect(0, canvas.height - 30, canvas.width, 30);
-                    ctx.fillStyle = "white";
+            ctx.fillStyle = "white";
             const words = cleanItem.split(' ');
 
             for (const word of words) {
@@ -206,9 +206,18 @@ async function startProctoringStream() {
         ctx.lineWidth = violation ? 5 : 2;
         ctx.strokeStyle = violation ? "red" : "lime";
         ctx.strokeRect(0, 0, canvas.width, canvas.height);
+        if (document.hidden) {
+            ctx.save();
+            ctx.fillStyle = "rgba(255, 0, 0, 0.8)";
+            ctx.font = "bold 16px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("⚠️ Внимание: вкладка неактивна!", canvas.width / 2, canvas.height / 2);
+            ctx.restore();
+        }
+        setTimeout(draw, 100); // или даже 200
 
-        requestAnimationFrame(draw);
     }
+
     draw();
     const canvasStream = canvas.captureStream(10); // 10 FPS
     const combinedStream = new MediaStream([
@@ -231,6 +240,7 @@ function startChunkRecording(stream) {
     const recorder = new MediaRecorder(stream, {mimeType: 'video/webm'});
 
     recorder.ondataavailable = async (e) => {
+        console.log('📦 Data available:', e.data.size);
         if (e.data.size > 0) {
             await uploadChunk(e.data);
         }

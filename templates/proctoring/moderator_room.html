@@ -408,7 +408,7 @@ function updateParticipantList() {
     signedListTitle.textContent = `Подписавшие (${signedParticipants.length})`;
     offlineListTitle.textContent = `Оффлайн (${offlineParticipants.length})`;
 
-    participantCount.textContent = videoParticipants.length + signedParticipants.length;
+    participantCount.textContent = videoParticipants.length;
 
     function createListItem(participant, status) {
         const li = document.createElement('li');
