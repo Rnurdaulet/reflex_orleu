@@ -187,6 +187,23 @@ async function startProctoringStream() {
             if (!cleanItem) return;
             ctx.fillStyle = cleanItem.includes('❌') ? "rgba(255, 0, 0, 0.5)" :
                 cleanItem.includes('✅') ? "rgba(0, 128, 0, 0.0)" : "rgba(255, 255, 255, 0.0)";
+
+            if (cleanItem.includes('❌ Лицо не найдено')) {
+                ctx.save();
+                ctx.fillStyle = "rgba(255, 0, 0, 0.8)";
+                ctx.font = "bold 16px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText("⚠️ Внимание: Лицо не найдено!", canvas.width / 2, canvas.height / 2);
+                ctx.restore();
+            }
+            if (cleanItem.includes('❌ Несколько лиц в кадре')) {
+                ctx.save();
+                ctx.fillStyle = "rgba(255, 0, 0, 0.8)";
+                ctx.font = "bold 16px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText("⚠️ Внимание: Несколько лиц в кадре!", canvas.width / 2, canvas.height / 2);
+                ctx.restore();
+            }
             ctx.fillRect(0, canvas.height - 30, canvas.width, 30);
             ctx.fillStyle = "white";
             const words = cleanItem.split(' ');
