@@ -107,12 +107,11 @@
                     <div class="justify-content-start align-content-center">
                         <h6 id="externalId">{{ quiz_person.external_id }}</h6>
                         <h5>{{ quiz_person.firstname }} {{ quiz_person.lastname }}</h5><br>
-
                     </div>
                 {% endif %}
                 <strong class="justify-content-end align-content-center" id="time">--:--</strong>
                 <!-- Language dropdown -->
-                <div class="dropdown justify-content-end align-content-center d-none">
+                <div class="dropdown justify-content-end align-content-center">
                     <button class="btn btn-secondary dropdown-toggle" type="button"
                             id="langDropdown" data-bs-toggle="dropdown" aria-expanded="false">Русский
                     </button>
@@ -125,7 +124,6 @@
             </div>
             <form id="quiz-form" method="post">
                 {% csrf_token %}
-                <input type="hidden" name="logs" id="logs-input">
                 <input type="hidden" name="logs" id="logs-input">
                 <div id="pages">
                     <!-- Страница 0: Приветствие -->
@@ -258,9 +256,9 @@
                 <a href="#" class="list-group-item list-group-item-action" data-step="0">Приветствие</a>
                 {% for scenario in scenarios %}
                     <a href="#" class="list-group-item list-group-item-action" data-step="{{ forloop.counter }}">
-                        <span class="lang-ru active">СЦЕНАРИЙ {{ scenario.id }}</span>
-                        <span class="lang-kk">{{ scenario.id }} СЦЕНАРИЙ</span>
-                        <span class="lang-en">SCENARIO {{ scenario.id }}</span>
+                        <span class="lang-ru active">СЦЕНАРИЙ {{ scenario.external_id }}</span>
+                        <span class="lang-kk">{{ scenario.external_id }} СЦЕНАРИЙ</span>
+                        <span class="lang-en">SCENARIO {{ scenario.external_id }}</span>
                         <div class="progress mt-1">
                             <div class="progress-bar"
                                  role="progressbar"
