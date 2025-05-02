@@ -110,17 +110,35 @@
                     </div>
                 {% endif %}
                 <strong class="justify-content-end align-content-center" id="time">--:--</strong>
-                <!-- Language dropdown -->
-                <div class="dropdown justify-content-end align-content-center">
-                    <button class="btn btn-secondary dropdown-toggle" type="button"
-                            id="langDropdown" data-bs-toggle="dropdown" aria-expanded="false">Русский
-                    </button>
-                    <ul class="dropdown-menu" aria-labelledby="langDropdown">
-                        <li><a class="dropdown-item lang-switch active" data-lang="ru" href="#">Русский</a></li>
-                        <li><a class="dropdown-item lang-switch" data-lang="kk" href="#">Қазақша</a></li>
-                        <li><a class="dropdown-item lang-switch" data-lang="en" href="#">English</a></li>
-                    </ul>
-                </div>
+                {% if user.is_authenticated %}
+                    {% if user.is_staff %}
+                        <!-- Language dropdown -->
+                        <div class="dropdown justify-content-end align-content-center">
+                            <button class="btn btn-secondary dropdown-toggle" type="button"
+                                    id="langDropdown" data-bs-toggle="dropdown" aria-expanded="false">Русский
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="langDropdown">
+                                <li><a class="dropdown-item lang-switch active" data-lang="ru" href="#">Русский</a></li>
+                                <li><a class="dropdown-item lang-switch" data-lang="kk" href="#">Қазақша</a></li>
+                                <li><a class="dropdown-item lang-switch" data-lang="en" href="#">English</a></li>
+                            </ul>
+                        </div>
+                    {% else %}
+                        <!-- Language dropdown -->
+                        <div class="dropdown justify-content-end align-content-center d-none">
+                            <button class="btn btn-secondary dropdown-toggle" type="button"
+                                    id="langDropdown" data-bs-toggle="dropdown" aria-expanded="false">Русский
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="langDropdown">
+                                <li><a class="dropdown-item lang-switch active" data-lang="ru" href="#">Русский</a></li>
+                                <li><a class="dropdown-item lang-switch" data-lang="kk" href="#">Қазақша</a></li>
+                                <li><a class="dropdown-item lang-switch" data-lang="en" href="#">English</a></li>
+                            </ul>
+                        </div>
+                    {% endif %}
+                {% endif %}
+
+
             </div>
             <form id="quiz-form" method="post">
                 {% csrf_token %}
